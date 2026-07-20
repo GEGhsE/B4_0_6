@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<!--
+    북 내비게이터 — 4학년 국어 독서 습관 앱
+    © GEG 화성/깊이 e끌림
+-->
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>북 내비게이터</title>
+    <script>const _BUILD_SIG = 'GEGHS-DEEPE-2026';</script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Do+Hyeon&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Jua', 'sans-serif'],
+                        display: ['Do Hyeon', 'sans-serif'],
+                    },
+                    boxShadow: { 'hard': '4px 4px 0px 0px #0F172A' }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* ══════════════════════════════════════════════
+           Scale 방식 반응형: transform:scale()이
+           모든 크기 조절 담당 — clamp/vw/@media 사용 금지
+        ══════════════════════════════════════════════ */
+        html { font-size: 20px; }
+        body { -webkit-tap-highlight-color: transparent; line-height: 1.5; word-break: keep-all; }
+
+        .pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn {
+            0%   { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1);   opacity: 1; }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .instruction-text { color:#1e293b; font-size:1.3rem; font-weight:800; margin-bottom:0.4rem; }
+        .highlight        { color:#4f46e5; }
+        .highlight-accent { color:#e11d48; }
+        .modal-content b  { color:#d97706; }
+
+        /* 탭 */
+        .nav-tab-btn { transition: all 0.2s ease; margin-left: -5px; font-size:0.9rem; line-height:1.3; }
+        .nav-tab-btn.tab-active {
+            filter: brightness(0.88) saturate(1.3);
+            box-shadow: 4px 0px 0px #0F172A, 0px -3px 0px #0F172A, 0px 3px 0px #0F172A !important;
+            z-index: 20;
+            margin-left: 0px;
+        }
+        .nav-tab-btn:hover:not(.tab-active) { filter: brightness(0.93); }
+
+        /* 스파이럴 링 */
+        .spiral-binding { display:flex; gap:8px; justify-content:center; position:absolute; top:-15px; left:50%; transform:translateX(-50%); z-index:20; }
+        .spiral-ring    { width:12px; height:24px; background:#cbd5e1; border:3px solid #475569; border-radius:999px; }
+
+        /* 질문 버튼 */
+        .q-select-btn { transition:all 0.2s; }
+        .q-select-btn.selected { background-color:#FEF08A; border-color:#F59E0B; transform:scale(0.98); }
+
+        /* 타이머 링 */
+        .pulse-ring { animation:pulse-ring 2s cubic-bezier(0.215,0.61,0.355,1) infinite; }
+        @keyframes pulse-ring {
+            0%   { transform:scale(0.95); box-shadow:0 0 0 0   rgba(250,204,21,.7); }
+            70%  { transform:scale(1);    box-shadow:0 0 0 20px rgba(250,204,21,0); }
+            100% { transform:scale(0.95); box-shadow:0 0 0 0   rgba(250,204,21,0); }
+        }
+
+        /* 책장 - 고정 2열 (scale이 크기 담당) */
+        .bookshelf-container { background-color:#FDF5E6; padding:16px; }
+        .bookshelf-frame { border:12px solid #FFE4B5; border-bottom:0; background-color:#FFE4B5; border-radius:12px 12px 0 0; }
+        .bookshelf-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; background-color:#FFE4B5; padding:12px; }
+        .bookshelf-legs { display:flex; justify-content:space-between; padding:0 40px; }
+        .leg { width:40px; height:40px; background-color:#FFE4B5; border-radius:0 0 20px 20px; }
+
+        /* 갤러리 카드 - 고정 가로 배치 */
+        .report-card-mini {
+            background-color:white; border:3px solid #0F172A; border-radius:16px;
+            padding:12px; display:flex; flex-direction:row; gap:12px;
+            box-shadow:4px 4px 0px #0F172A; cursor:pointer; transition:transform 0.2s;
+        }
+        .report-card-mini:hover { transform:scale(1.02) translateY(-2px); border-color:#FACC15; }
+
+        /* 통계 카드 */
+        .stat-card { background:white; border:2px solid #e2e8f0; border-radius:12px; padding:8px 10px; text-align:center; flex:1; }
+        .stat-card .stat-value { font-size:1.1rem; font-weight:900; line-height:1.2; }
+        .stat-card .stat-label { font-size:0.6rem; font-weight:700; color:#94a3b8; }
+
+        /* 숫자 입력 스피너 제거 */
+        input[type=number] { -moz-appearance:textfield; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; }
+
+        /* 메모 미리보기 */
+        .memo-preview-box {
+            background:linear-gradient(135deg,#fffbeb,#fef3c7);
+            border:2px dashed #f59e0b; border-radius:14px;
+        }
+
+        /* 이름 카드 팝인 */
+        @keyframes bounceIn {
+            0%   { transform: scale(0.8); opacity:0; }
+            60%  { transform: scale(1.05); }
+            100% { transform: scale(1); opacity:1; }
+        }
+        .bounce-in { animation: bounceIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275); }
+    </style>
+</head>
+<body class="bg-yellow-100 select-none" style="margin:0; padding:0; width:100vw; height:100vh; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+
+<!-- 기준 크기 고정 래퍼 (960×640) — JS가 scale로 조정 -->
+<div id="scale-wrapper" style="
+    width: 960px;
+    height: 640px;
+    position: relative;
+    flex-shrink: 0;
+    transform-origin: center center;
+">
+<div class="relative w-full h-full flex items-center justify-center">
+
+    <!-- 오른쪽 탭 — inner-wrapper 기준 absolute -->
+    <div class="absolute top-16 flex flex-col gap-2 z-30" style="left: 100%;">
+        <button type="button" onclick="handleTabClick('view-plan')"   class="nav-tab-btn w-16 bg-[#FCA5A5] border-[4px] border-l-0 border-slate-900 rounded-r-xl flex items-center justify-center text-slate-900 font-bold" style="height:72px">준비</button>
+        <button type="button" onclick="handleTabClick('view-pre')"    class="nav-tab-btn w-16 bg-[#FCD34D] border-[4px] border-l-0 border-slate-900 rounded-r-xl flex items-center justify-center text-slate-900 font-bold" style="height:72px">탐험</button>
+        <button type="button" onclick="handleTabClick('view-result')" class="nav-tab-btn w-16 bg-[#86EFAC] border-[4px] border-l-0 border-slate-900 rounded-r-xl flex items-center justify-center text-slate-900 font-bold" style="height:72px">도착</button>
+        <button type="button" onclick="handleTabClick('view-record')" class="nav-tab-btn w-16 bg-[#93C5FD] border-[4px] border-l-0 border-slate-900 rounded-r-xl flex items-center justify-center text-slate-900 font-bold" style="height:72px">기록</button>
+        <button type="button" id="teacher-settings-btn" onclick="openTeacherSettings()" class="nav-tab-btn w-16 bg-slate-200 border-[4px] border-l-0 border-slate-900 rounded-r-xl flex items-center justify-center text-slate-900 font-bold" style="height:48px">⚙️</button>
+    </div>
+
+    <div id="app-container" class="relative w-full h-full bg-white border-[5px] border-slate-900 rounded-[2.5rem] overflow-hidden flex flex-col z-10">
+        <!-- ══════════════════════════════════════════════
+             0. 로그인 — 학년/반/번호 입력 → 이름 확인
+        ══════════════════════════════════════════════ -->
+        <section id="view-login" class="view-section active flex w-full h-full flex-col items-center justify-center p-4 relative z-10 bg-yellow-50/50 overflow-hidden">
+            <div class="absolute top-4 left-6 bg-white border-[3px] border-slate-900 rounded-full px-4 py-1.5 transform -rotate-2 z-20">
+                <span class="text-lg font-bold text-slate-900">초등학교 4학년 국어</span>
+            </div>
+            <div class="flex flex-col items-center w-full max-w-lg gap-2">
+                <div class="text-5xl pop-in">🧭</div>
+                <h1 class="font-display text-6xl font-black text-slate-900 tracking-tight text-center leading-tight">북 내비게이터</h1>
+                <p class="text-xl font-bold text-slate-500"><span class="highlight">예측</span>하고 <span class="highlight">정리</span>하며, <span class="highlight-accent">깊이 읽는</span> 생각 독서</p>
+
+            <!-- ── Step 1: 이름 선택 ── -->
+            <div id="login-step1" class="w-full flex flex-col gap-2">
+                <div class="bg-white border-[3px] border-slate-900 rounded-xl px-5 pt-2 pb-3">
+                    <p class="text-center text-lg font-black text-orange-400 mb-2">내 이름은?</p>
+                    <select id="student-select"
+                        class="w-full text-center font-black outline-none border-[3px] border-yellow-300 focus:border-yellow-500 rounded-xl transition-colors py-3 px-4 bg-yellow-50 text-2xl">
+                        <option value="">🏫 명단 불러오는 중...</option>
+                    </select>
+                </div>
+                <button type="button" id="lookup-btn" onclick="lookupStudent()"
+                    class="w-full bg-yellow-400 border-[3px] border-slate-900 rounded-xl py-2 text-xl font-bold text-slate-900 active:scale-95 transition-all">
+                    <span id="lookup-btn-text">✅ 선택 완료</span>
+                </button>
+                <div id="login-fallback" class="hidden flex-col gap-2">
+                    <p class="text-center text-base font-bold text-slate-400">※ 시트 연동이 안 된 경우 — 이름을 직접 입력하세요</p>
+                    <input type="text" id="username-fallback"
+                        class="w-full text-center text-xl font-bold outline-none border-3 border-slate-200 focus:border-yellow-400 rounded-xl py-2 px-4 bg-white placeholder-slate-300"
+                        placeholder="이름 직접 입력" maxlength="8">
+                    <button type="button" onclick="loginDirect()"
+                        class="w-full bg-green-500 border-[3px] border-slate-900 rounded-xl py-2 text-xl font-bold text-white active:bg-green-600 active:scale-95 transition-all">
+                        시작하기!
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Step 2: 이름 확인 ── -->
+            <div id="login-step2" class="hidden w-full flex-col gap-2">
+                <div class="bg-white border-[3px] border-slate-900 rounded-xl px-6 py-3 text-center bounce-in">
+                    <p class="text-base font-black text-green-600 mb-2">✅ 이 친구 맞나요?</p>
+                    <div class="flex items-center justify-center gap-4">
+                        <span class="text-4xl">👤</span>
+                        <p id="found-name" class="text-4xl font-black text-slate-900 leading-tight"></p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" onclick="resetLogin()"
+                        class="flex-1 bg-white border-[3px] border-slate-300 rounded-xl py-2 text-lg font-bold text-slate-500 active:bg-slate-50 transition-all">
+                        ← 다시 선택
+                    </button>
+                    <button type="button" onclick="confirmLogin()"
+                        class="flex-[2] bg-green-500 border-[3px] border-slate-900 rounded-xl py-2 text-xl font-bold text-white active:bg-green-600 active:scale-95 transition-all">
+                        맞아요! 시작하기 🚀
+                    </button>
+                </div>
+            </div>
+
+            </div><!-- /flex container -->
+        </section>
+
+        <!-- ══════════════════════════════════════════════
+             0.5. 활동 안내
+        ══════════════════════════════════════════════ -->
+        <section id="view-guide" class="view-section hidden w-full h-full flex-col items-center justify-center px-5 py-3 relative z-10 bg-yellow-50/50 overflow-hidden">
+            <div class="bg-white border-[3px] border-slate-900 rounded-full px-6 py-2 mb-3">
+                <span class="text-xl font-black text-slate-900">이렇게 활동해요! 🧐</span>
+            </div>
+            <div class="w-full bg-white border-[4px] border-slate-900 rounded-2xl px-5 py-4 flex flex-col gap-3">
+                <p class="text-center text-lg font-bold text-slate-700 break-keep">안녕, <span id="guide-name" class="text-indigo-600 border-b-4 border-indigo-200">000</span> 탐험가님! 👋 지금부터 즐거운 독서 탐험을 떠날 거예요.</p>
+                <div class="bg-yellow-50 border-2 border-yellow-200 rounded-xl px-4 py-3 flex flex-col gap-3">
+                    <div class="flex items-center gap-3"><div class="bg-[#FCA5A5] w-10 h-10 rounded-full flex items-center justify-center text-lg font-black border-2 border-slate-900 shrink-0">1</div><div class="text-lg font-bold text-slate-800"><span class="text-rose-500">준비</span>: 읽을 책과 목표 시간을 정해요.</div></div>
+                    <div class="flex items-center gap-3"><div class="bg-[#FCD34D] w-10 h-10 rounded-full flex items-center justify-center text-lg font-black border-2 border-slate-900 shrink-0">2</div><div class="text-lg font-bold text-slate-800"><span class="text-amber-500">탐험</span>: <span class="text-blue-600">예측</span>하고 <span class="text-blue-600">집중 독서</span> 후 한 문장으로 <span class="text-blue-600">정리</span>해요.</div></div>
+                    <div class="flex items-center gap-3"><div class="bg-[#86EFAC] w-10 h-10 rounded-full flex items-center justify-center text-lg font-black border-2 border-slate-900 shrink-0">3</div><div class="text-lg font-bold text-slate-800"><span class="text-green-600">도착</span>: 정리한 내용을 확인하고 오늘 활동을 <span class="text-blue-600">평가</span>해요.</div></div>
+                    <div class="flex items-center gap-3"><div class="bg-[#93C5FD] w-10 h-10 rounded-full flex items-center justify-center text-lg font-black border-2 border-slate-900 shrink-0">4</div><div class="text-lg font-bold text-slate-800"><span class="text-blue-500">기록</span>: 꾸준히 책을 읽으며 독서 <span class="text-blue-600">습관</span>을 길러요.</div></div>
+                </div>
+                <button type="button" onclick="startJourney()" class="w-full bg-orange-400 border-[4px] border-slate-900 rounded-xl py-3 text-xl font-bold text-slate-900 active:translate-y-1 hover:bg-orange-500 transition-colors">알겠어요! 출발!</button>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════
+             1. 계획하기
+        ══════════════════════════════════════════════ -->
+        <section id="view-plan" class="view-section hidden w-full h-full flex-col px-3 pt-2 pb-2 overflow-hidden z-10">
+            <div class="flex justify-between items-center mb-2 border-b-[3px] border-slate-900 pb-4 shrink-0">
+                <div class="flex items-center gap-3">
+                    <span class="bg-[#FCA5A5] text-slate-900 border-2 border-slate-900 px-4 py-1.5 rounded-lg text-xl font-bold shrink-0">준비</span>
+                    <h2 class="font-display text-3xl font-black text-slate-900">오늘의 탐험 계획</h2>
+                </div>
+                <div class="bg-pink-300 border-[3px] border-slate-900 rounded-xl px-5 py-3 inline-flex items-center gap-2">
+                    <p id="display-name" class="text-2xl font-black text-slate-900 leading-tight"></p>
+                    <span class="text-2xl font-bold text-slate-600">대원</span>
+                </div>
+            </div>
+            <div class="flex-1 flex flex-col justify-center gap-4">
+                <div>
+                    <label class="block instruction-text mb-2">📖 <span class="highlight">읽을 책</span>은?</label>
+                    <input type="text" id="book-title" class="w-full bg-slate-50 border-[3px] border-slate-300 rounded-xl px-4 py-2 text-xl font-bold outline-none focus:border-yellow-500 transition-colors text-slate-900" placeholder="책 제목 입력">
+                </div>
+                <div>
+                    <h3 class="instruction-text mb-2">⏱️ <span class="highlight">오늘의 독서 시간</span></h3>
+                    <div class="w-full max-w-[400px] mx-auto relative">
+                        <input type="number" id="reading-time" class="w-full bg-slate-50 border-[3px] border-slate-300 rounded-xl px-4 py-2 text-center text-2xl font-bold outline-none focus:border-yellow-500 transition-colors text-slate-900 placeholder-slate-400" placeholder="20">
+                        <span class="absolute right-6 top-1/2 -translate-y-1/2 text-xl font-bold text-slate-500">분</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3 mb-2 shrink-0"><button type="button" onclick="confirmPlan()" class="block mx-auto w-60 bg-green-500 border-[4px] border-slate-900 rounded-xl py-3 text-xl font-bold text-white active:bg-green-600 active:scale-95 transition-all">선택 완료!</button></div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════
+             2. 예측하기 — 1/3 단계
+        ══════════════════════════════════════════════ -->
+        <section id="view-pre" class="view-section hidden w-full h-full flex-col px-3 pt-2 pb-2 overflow-hidden z-10">
+            <div class="w-full mb-2 shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="bg-[#FCD34D] text-slate-900 border-2 border-slate-900 px-4 py-1.5 rounded-lg text-xl font-bold shrink-0">탐험</span>
+                    <div class="flex-1 h-5 bg-slate-200 rounded-full border-[3px] border-slate-900 overflow-hidden"><div class="h-full w-1/3 bg-[#FCD34D]"></div></div>
+                    <span class="text-xl font-bold text-slate-600 shrink-0">1 / 3 단계</span>
+                </div>
+            </div>
+            <!-- 파란 박스: 단계 제목 + 활동 안내 버튼 -->
+            <div class="mb-2 shrink-0 bg-sky-50 border-2 border-sky-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                <p class="text-2xl font-black text-sky-600">📍 1단계: 내용 예측하기</p>
+                <button type="button" onclick="showActivityInfo('pre')" class="bg-sky-500 text-white px-4 py-2 rounded-xl text-lg font-bold active:scale-95 transition-all shrink-0">💡 활동 안내</button>
+            </div>
+            <div class="flex-1 bg-white border-[3px] border-slate-300 rounded-2xl p-4 flex flex-col min-h-0">
+                <h3 class="text-xl font-black text-slate-900 mb-3">Q. 책 표지·제목·삽화를 보거나 앞서 읽은 내용을 떠올리며, 앞으로 어떤 내용이 나올지 예측해 보세요.</h3>
+                <textarea id="pre-input" class="flex-1 w-full bg-slate-50 border-[3px] border-slate-200 rounded-xl p-4 text-2xl leading-relaxed outline-none focus:border-yellow-400 resize-none overflow-y-auto text-slate-900" placeholder="내 생각을 자유롭게 적어보세요."></textarea>
+            </div>
+            <div class="mt-3 mb-2 flex gap-3 justify-center shrink-0">
+                <button type="button" onclick="goToStep('view-plan')" class="w-52 bg-pink-400 border-[4px] border-slate-900 rounded-xl py-3 text-2xl font-bold text-slate-900 active:scale-95 transition-all">◀ 이전으로</button>
+                <button type="button" onclick="validateAndGo('pre')"  class="w-52 bg-green-500 border-[4px] border-slate-900 rounded-xl py-3 text-2xl font-bold text-white active:bg-green-600 active:scale-95 transition-all">다음으로 ▶</button>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════
+             3. 타이머 + 메모 — 2/3 단계
+        ══════════════════════════════════════════════ -->
+        <section id="view-timer" class="view-section hidden w-full h-full flex-col px-3 pt-2 pb-2 overflow-hidden z-10">
+            <div class="w-full mb-2 shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="bg-[#FCD34D] text-slate-900 border-2 border-slate-900 px-4 py-1.5 rounded-lg text-xl font-bold shrink-0">탐험</span>
+                    <div class="flex-1 h-5 bg-slate-200 rounded-full border-[3px] border-slate-900 overflow-hidden"><div class="h-full w-2/3" style="background:#FCD34D;"></div></div>
+                    <span class="text-xl font-bold text-slate-600 shrink-0">2 / 3 단계</span>
+                </div>
+            </div>
+            <!-- 초록 박스: 단계 제목 + 활동 안내 버튼 -->
+            <div class="mb-2 shrink-0 bg-emerald-50 border-2 border-emerald-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                <p class="text-2xl font-black text-emerald-600">📚 2단계: 책 속으로!</p>
+                <button type="button" onclick="showActivityInfo('timer')" class="bg-emerald-500 text-white px-4 py-2 rounded-xl text-lg font-bold active:scale-95 transition-all shrink-0">💡 활동 안내</button>
+            </div>
+            <div class="flex-1 flex flex-row gap-3 items-center justify-center w-full">
+                <!-- 타이머 -->
+                <div class="flex-1 flex flex-col items-center justify-center w-full">
+                    <div class="relative w-44 h-44 flex items-center justify-center mb-3">
+                        <div id="timer-ring" class="absolute inset-0 rounded-full border-[6px] border-yellow-200"></div>
+                        <div class="bg-white border-[6px] border-slate-900 w-full h-full rounded-full flex flex-col items-center justify-center z-10">
+                            <span id="timer-display" class="font-display text-5xl font-black text-slate-900 tabular-nums tracking-tight">00:00</span>
+                            <span id="timer-label" class="text-lg font-bold text-slate-500 mt-1">남은 시간</span>
+                        </div>
+                    </div>
+                    <p id="timer-msg" class="text-xl font-bold text-slate-600 mb-3 animate-bounce flex items-center justify-center">시작 버튼을 눌러주세요!</p>
+                    <div id="timer-controls" class="flex flex-row items-center justify-center gap-4">
+                        <button type="button" id="timer-toggle-btn" onclick="toggleTimer()" class="w-16 h-16 rounded-full bg-indigo-500 border-[4px] border-slate-900 text-white text-3xl flex items-center justify-center active:translate-y-1 transition-all">▶</button>
+                        <button type="button" id="extra-finish-btn" onclick="finishReading()" class="hidden bg-green-500 border-[3px] border-slate-900 rounded-xl px-5 py-2 text-xl font-bold text-white active:scale-95 transition-all items-center gap-2">✅ 독서 완료! 🚀</button>
+                    </div>
+                    <div id="timer-finish-options" class="hidden mt-4 gap-3 flex-wrap justify-center">
+                        <button type="button" onclick="addMoreTime()"   class="bg-yellow-400 border-[3px] border-slate-900 rounded-xl px-5 py-2 text-xl font-bold text-slate-900 active:scale-95 transition-all flex items-center gap-2">📖 더 읽기</button>
+                        <button type="button" onclick="finishReading()" class="bg-green-500  border-[3px] border-slate-900 rounded-xl px-5 py-2 text-xl font-bold text-white   active:scale-95 transition-all flex items-center gap-2">다음으로 🚀</button>
+                    </div>
+                </div>
+                <!-- 메모 -->
+                <div class="flex-1 w-full h-full flex flex-col">
+                    <div class="bg-white border-[4px] border-slate-300 rounded-2xl p-4 h-full flex flex-col relative shadow-md transform rotate-1">
+                        <div class="absolute -top-4 left-6 flex gap-3 z-20">
+                            <div class="w-3 h-8 bg-slate-200 border-2 border-slate-400 rounded-full"></div>
+                            <div class="w-3 h-8 bg-slate-200 border-2 border-slate-400 rounded-full"></div>
+                            <div class="w-3 h-8 bg-slate-200 border-2 border-slate-400 rounded-full"></div>
+                            <div class="w-3 h-8 bg-slate-200 border-2 border-slate-400 rounded-full"></div>
+                        </div>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2 mb-2 text-lg text-slate-600 font-bold shrink-0">
+                            💭 읽으면서 떠오른 생각이나 느낌, ❓ 이해가 안 되거나 궁금한 점, 💬 기억하고 싶은 인상적인 문장 등을 자유롭게 적어보세요.
+                        </div>
+                        <textarea id="reading-memo" class="flex-1 w-full bg-[#fdfbf7] border-2 border-dashed border-slate-200 rounded-xl p-3 text-xl leading-relaxed text-slate-800 placeholder-slate-400 focus:border-yellow-400 outline-none resize-none overflow-y-auto" placeholder="자유롭게 적어보세요..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════
+             4. 한 문장 정리 — 3/3 단계
+        ══════════════════════════════════════════════ -->
+        <section id="view-post" class="view-section hidden w-full h-full flex-col px-3 pt-2 pb-2 overflow-y-scroll z-10" style="-webkit-overflow-scrolling: touch;">
+            <div class="w-full mb-2 shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="bg-[#86EFAC] text-slate-900 border-2 border-slate-900 px-4 py-1.5 rounded-lg text-xl font-bold shrink-0">탐험</span>
+                    <div class="flex-1 h-5 bg-slate-200 rounded-full border-[3px] border-slate-900 overflow-hidden"><div class="h-full w-full" style="background:#86EFAC;"></div></div>
+                    <span class="text-xl font-bold text-slate-600 shrink-0">3 / 3 단계</span>
+                </div>
+            </div>
+
+            <!-- 보라 박스: 단계 제목 + 활동 안내 버튼 -->
+            <div class="mb-2 shrink-0 bg-violet-50 border-2 border-violet-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                <p class="text-2xl font-black text-violet-600">✍️ 3단계: 생각 정리하기</p>
+                <button type="button" onclick="showActivityInfo('post')" class="bg-violet-500 text-white px-4 py-2 rounded-xl text-lg font-bold active:scale-95 transition-all shrink-0">💡 활동 안내</button>
+            </div>
+
+            <!-- 메모 미리보기 -->
+            <div id="memo-preview-area" class="hidden shrink-0 mb-2 memo-preview-box" style="padding: 6px 14px;">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg font-black text-amber-700">✏️ 내가 쓴 독서 메모 — 참고해서 정리해봐요!</span>
+                    <button type="button" onclick="toggleMemoPreview()" class="shrink-0 text-sm font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 hover:bg-amber-200 transition-colors">펼치기</button>
+                </div>
+                <p id="memo-preview-text" class="text-base text-slate-700 font-medium whitespace-pre-wrap leading-relaxed overflow-hidden mt-1" style="max-height:0px" data-collapsed="true"></p>
+            </div>
+
+            <!-- 커스텀 드롭다운 질문 선택 -->
+            <div class="shrink-0 mb-3 relative" id="q-dropdown-wrap">
+                <div id="teacher-q-btn-wrap" class="hidden flex flex-col gap-2 mb-2"></div>
+
+                <!-- 드롭다운 버튼 -->
+                <button type="button" id="q-dropdown-btn" onclick="toggleQDropdown()"
+                    class="w-full flex items-center justify-between bg-white border-[3px] border-slate-900 rounded-xl px-4 py-3 text-xl font-bold text-slate-700 active:scale-95 transition-all">
+                    <span id="q-dropdown-label">💬 질문을 선택해주세요</span>
+                    <span id="q-dropdown-arrow" class="text-slate-400 transition-transform">▼</span>
+                </button>
+
+                <!-- 드롭다운 목록 -->
+                <div id="q-dropdown-list" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border-[3px] border-slate-900 rounded-xl overflow-hidden z-40 shadow-xl">
+                    <button type="button" onclick="selectFromDropdown('😲 책을 읽으며 가장 놀라거나 신기했던 장면은 무엇인가요?','😲')" class="q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-yellow-50 border-b border-slate-100 text-lg font-bold text-slate-700">
+                        <span class="text-xl shrink-0">😲</span><span>가장 놀라거나 신기했던 장면은 무엇인가요?</span>
+                    </button>
+                    <button type="button" onclick="selectFromDropdown('🔗 이 이야기에서 중요한 사건의 원인과 결과는 무엇인가요?','🔗')" class="q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-yellow-50 border-b border-slate-100 text-lg font-bold text-slate-700">
+                        <span class="text-xl shrink-0">🔗</span><span>이야기에서 중요한 사건의 원인과 결과는?</span>
+                    </button>
+                    <button type="button" onclick="selectFromDropdown('🔍 글에 직접 나오지 않았지만 내가 짐작한 내용은 무엇인가요?','🔍')" class="q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-yellow-50 border-b border-slate-100 text-lg font-bold text-slate-700">
+                        <span class="text-xl shrink-0">🔍</span><span>글에 직접 나오지 않았지만 내가 짐작한 내용은?</span>
+                    </button>
+                    <button type="button" onclick="selectFromDropdown('📢 친구에게 이 책을 추천한다면 뭐라고 말하고 싶나요?','📢')" class="q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-yellow-50 border-b border-slate-100 text-lg font-bold text-slate-700">
+                        <span class="text-xl shrink-0">📢</span><span>친구에게 이 책을 추천한다면 뭐라고 말하고 싶나요?</span>
+                    </button>
+                    <button type="button" onclick="selectFromDropdown('🦸 만약 내가 주인공이라면 이 상황에서 어떻게 했을까요?','🦸')" class="q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-yellow-50 border-b border-slate-100 text-lg font-bold text-slate-700">
+                        <span class="text-xl shrink-0">🦸</span><span>만약 내가 주인공이라면 어떻게 했을까요?</span>
+                    </button>
+                    <button type="button" onclick="selectFromDropdown('💌 작가님이 이 책을 통해 전하고 싶은 마음은 무엇일까요?','💌')" class="q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-yellow-50 border-b border-slate-100 text-lg font-bold text-slate-700">
+                        <span class="text-xl shrink-0">💌</span><span>작가님이 전하고 싶은 마음은 무엇일까요?</span>
+                    </button>
+                    <button type="button" onclick="selectFromDropdown('🧩 이 글의 중심 생각을 한 문장으로 정리한다면?','🧩')" class="q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-yellow-50 border-b border-slate-100 text-lg font-bold text-slate-700">
+                        <span class="text-xl shrink-0">🧩</span><span>이 글의 중심 생각을 한 문장으로 정리한다면?</span>
+                    </button>
+                    <button type="button" onclick="selectFromDropdown('custom','✨')" class="q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-yellow-50 text-lg font-bold text-slate-700">
+                        <span class="text-xl shrink-0">✨</span><span>나만의 질문을 직접 만들어 보세요!</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white border-[3px] border-slate-200 rounded-2xl p-4 mb-3">
+                <div id="selected-q-display" class="font-bold text-slate-900 mb-2 text-xl truncate shrink-0"><span class="text-slate-400">위에서 질문을 선택해주세요 👆</span></div>
+                <input type="text" id="post-custom-q" class="hidden w-full bg-yellow-50 border-b-2 border-yellow-400 p-3 mb-2 font-bold text-slate-900 outline-none shrink-0 text-xl" placeholder="질문을 직접 써보세요.">
+
+                <!-- 모드 선택 버튼 (질문 선택 후 표시) -->
+                <div id="input-mode-btns" class="hidden flex gap-2 mb-3">
+                    <button type="button" onclick="setInputMode('blank')"
+                        class="flex-1 mode-btn bg-indigo-50 border-[3px] border-indigo-300 rounded-xl py-2 text-lg font-bold text-indigo-700 active:scale-95 transition-all" data-mode="blank">
+                        📝 빈칸 채우기
+                    </button>
+                    <button type="button" onclick="setInputMode('free')"
+                        class="flex-1 mode-btn bg-slate-50 border-[3px] border-slate-300 rounded-xl py-2 text-lg font-bold text-slate-600 active:scale-95 transition-all" data-mode="free">
+                        ✏️ 직접 입력하기
+                    </button>
+                </div>
+
+                <textarea id="post-input" class="w-full bg-slate-50 border-none rounded-lg p-4 text-2xl leading-relaxed outline-none resize-none overflow-y-auto text-slate-900 placeholder-slate-400" style="height: 180px;" placeholder="질문을 선택하면 예시 문장이 여기에 나타나요!"></textarea>
+            </div>
+            <div class="mt-2 mb-8 flex gap-3 justify-center shrink-0">
+                <button type="button" onclick="goToStep('view-timer')" class="w-44 bg-pink-400  border-[3px] border-slate-900 rounded-xl py-3 text-2xl font-bold text-slate-900 active:scale-95 transition-all">◀ 이전</button>
+                <button type="button" onclick="validateAndGo('post')"  class="w-56 bg-green-500 border-[3px] border-slate-900 rounded-xl py-3 text-2xl font-bold text-white   active:bg-green-600 active:scale-95 transition-all">결과 보기 🏁</button>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════
+             5. 결과 보고서
+        ══════════════════════════════════════════════ -->
+        <section id="view-result" class="view-section hidden w-full h-full flex-col px-3 pt-2 pb-2 overflow-y-auto z-10 bg-yellow-50/80">
+            <div class="flex items-center gap-3 mb-4 shrink-0">
+                <span class="bg-[#86EFAC] text-slate-900 border-2 border-slate-900 px-4 py-1.5 rounded-lg text-xl font-bold shrink-0">도착</span>
+                <h2 class="font-display text-3xl font-black text-slate-900">📜 탐험 완료 보고서</h2>
+            </div>
+            <div id="result-card" class="bg-white border-[4px] border-slate-900 rounded-2xl p-4 mb-3 relative mt-2">
+                <div class="spiral-binding">
+                    <div class="spiral-ring"></div><div class="spiral-ring"></div>
+                    <div class="spiral-ring"></div><div class="spiral-ring"></div>
+                    <div class="spiral-ring"></div><div class="spiral-ring"></div>
+                </div>
+                <!-- 헤더 -->
+                <div class="flex flex-row justify-between items-start gap-3 mb-3 pb-4 border-b-2 border-dashed border-slate-200">
+                    <div>
+                        <p class="text-2xl font-black text-slate-800" id="res-name-display"></p>
+                        <p class="text-base font-bold text-slate-600" id="res-date-display"></p>
+                    </div>
+                    <div class="flex gap-3 flex-wrap">
+                        <div class="bg-yellow-50 border-2 border-yellow-200 rounded-xl px-4 py-2 text-center">
+                            <p class="text-xs font-bold text-slate-400 mb-0.5">읽은 책</p>
+                            <p class="text-lg font-black text-slate-800" id="res-book-title-display">—</p>
+                        </div>
+                        <div class="bg-blue-50 border-2 border-blue-200 rounded-xl px-4 py-2 text-center">
+                            <p class="text-xs font-bold text-slate-400 mb-0.5">독서 시간</p>
+                            <p class="text-lg font-black text-blue-700" id="res-plan-display">—</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- 내용 -->
+                <div class="flex flex-col gap-5">
+                    <div>
+                        <span class="inline-block bg-orange-100 px-2 py-1 rounded border-2 border-orange-200 text-sm font-bold text-slate-700 w-fit mb-2">예측한 내용</span>
+                        <p id="res-pre" class="text-slate-800 text-base break-words whitespace-pre-wrap leading-relaxed"></p>
+                    </div>
+                    <div>
+                        <span class="inline-block bg-pink-100 px-2 py-1 rounded border-2 border-pink-200 text-sm font-bold text-slate-700 w-fit mb-2">독서 메모</span>
+                        <div class="bg-pink-50 p-4 rounded-xl border-2 border-pink-100">
+                            <p class="text-base font-medium text-slate-800 whitespace-pre-wrap leading-relaxed" id="res-memo"></p>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="inline-block bg-lime-100 px-2 py-1 rounded border-2 border-lime-200 text-sm font-bold text-slate-700 w-fit mb-2">생각 정리하기</span>
+                        <div class="bg-lime-50 p-4 rounded-xl border-2 border-lime-100">
+                            <p class="text-sm font-bold text-green-700 mb-2" id="res-post-q"></p>
+                            <p class="text-lg font-bold text-slate-900 leading-relaxed" id="res-post-a"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="final-actions" class="flex flex-row gap-3 pb-8 justify-center w-full max-w-[600px] mx-auto mt-4">
+                <button type="button" onclick="saveImage()" class="flex-1 bg-slate-800 border-[4px] border-slate-900 rounded-xl py-3 text-lg font-bold text-white active:scale-95 transition-all">📷 독서기록 저장하기</button>
+                <button type="button" onclick="finishToday()" class="flex-1 bg-green-500 border-[4px] border-slate-900 rounded-xl py-3 text-lg font-bold text-white active:bg-green-600 active:scale-95 transition-all">✅ 오늘 독서 완료</button>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════
+             6. 기록 (책장)
+        ══════════════════════════════════════════════ -->
+        <section id="view-record" class="view-section hidden w-full h-full flex-col px-3 pt-2 pb-2 overflow-hidden z-10">
+            <div class="flex justify-between items-center mb-3 pb-3 shrink-0 px-2">
+                <div class="flex items-center gap-3">
+                    <span class="bg-[#93C5FD] text-slate-900 border-2 border-slate-900 px-4 py-1.5 rounded-lg text-xl font-bold shrink-0">기록</span>
+                    <h2 class="font-display text-3xl font-black text-slate-900">나의 탐험 기록장</h2>
+                </div>
+                <div class="bg-pink-300 border-[3px] border-slate-900 rounded-xl px-4 py-2 text-right">
+                    <p id="display-name-rec" class="text-xl font-black text-slate-900 leading-tight"></p>
+                </div>
+            </div>
+            <!-- 성장 통계 -->
+            <div id="record-stats" class="hidden shrink-0 px-2 mb-2">
+                <div id="record-stats-inner" class="flex gap-2 flex-wrap"></div>
+            </div>
+            <div class="flex justify-between items-center px-2 mb-2 shrink-0 gap-2">
+                <button type="button" onclick="goHome()" class="bg-white border-[2px] border-slate-900 text-slate-700 px-3 py-1 rounded-lg font-bold text-sm active:scale-95 transition-all">🏠 홈으로</button>
+                <button type="button" onclick="startNewReading()" class="bg-yellow-400 border-[2px] border-slate-900 text-slate-900 px-4 py-1 rounded-lg font-bold text-sm active:scale-95 transition-all">🔄 다음 독서 시작</button>
+            </div>
+            <div class="flex-1 overflow-y-auto no-scrollbar p-4 bookshelf-container" id="bookshelf-area">
+                <div class="bookshelf-frame"></div>
+                <div id="gallery-grid" class="bookshelf-grid"></div>
+                <div class="bookshelf-legs"><div class="leg"></div><div class="leg"></div></div>
+            </div>
+        </section>
+
+    </div><!-- /app-container -->
+</div><!-- /inner-wrapper -->
+</div><!-- /scale-wrapper -->
+
+<!-- 모달 -->
+<div id="modal-overlay" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white border-[5px] border-slate-900 rounded-3xl p-8 w-full max-w-2xl shadow-2xl pop-in text-center">
+        <h3 id="modal-header" class="font-display text-3xl font-black text-slate-900 mb-4"></h3>
+        <div id="modal-body" class="text-xl font-bold text-slate-700 leading-relaxed mb-6 modal-content text-left"></div>
+        <button id="modal-close-btn" class="w-full bg-orange-400 border-[3px] border-slate-900 rounded-xl py-3 text-xl font-bold text-slate-900 active:scale-95 transition-all" onclick="closeModal()">확인</button>
+    </div>
+</div>
+
+<!-- 교사 설정 모달 -->
+<div id="teacher-settings-overlay" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white border-[5px] border-slate-900 rounded-3xl p-8 w-full max-w-2xl shadow-2xl pop-in text-left">
+        <h3 class="font-display text-3xl font-black text-slate-900 mb-5">⚙️ 선생님 설정</h3>
+
+        <div class="mb-5">
+            <label class="block text-lg font-black text-slate-700 mb-2">시트(GAS) 연결 URL</label>
+            <p class="text-base text-slate-500 mb-2">GitHub Pages 등 외부 호스팅에서 이 화면을 열었을 때, 학생들이 앱을 시트에 연결해서 쓰려면 아래 GAS 웹앱 URL을 입력하세요.</p>
+            <input type="text" id="connect-sheet-input" class="w-full border-[3px] border-slate-300 rounded-xl px-4 py-2 text-base outline-none focus:border-yellow-400" placeholder="https://script.google.com/macros/s/.../exec">
+            <button type="button" onclick="connectSheet()" class="w-full mt-2 bg-indigo-500 border-[3px] border-slate-900 rounded-xl py-2 text-lg font-bold text-white active:scale-95 transition-all">🔗 시트 연결하기</button>
+        </div>
+
+        <div class="mb-5">
+            <label class="block text-lg font-black text-slate-700 mb-2">학생용 링크 복사</label>
+            <p class="text-base text-slate-500 mb-2">시트 연결이 끝나면, 아래 버튼으로 학생들에게 배포할 링크를 복사할 수 있어요.</p>
+            <button type="button" onclick="copyStudentLink()" class="w-full bg-green-500 border-[3px] border-slate-900 rounded-xl py-2 text-lg font-bold text-white active:scale-95 transition-all">📋 학생용 링크 복사</button>
+        </div>
+
+        <div id="disconnect-wrap" class="mb-5 hidden">
+            <label class="block text-lg font-black text-slate-700 mb-2">연결 해제</label>
+            <p class="text-base text-slate-500 mb-2">연결을 끊고 체험 모드로 돌아갑니다. 시트에 저장된 기록은 지워지지 않아요.</p>
+            <button type="button" onclick="disconnectSheet()" class="w-full bg-white border-[3px] border-red-300 rounded-xl py-2 text-lg font-bold text-red-600 active:scale-95 transition-all">연결 해제</button>
+        </div>
+
+        <button type="button" onclick="closeTeacherSettings()" class="w-full bg-slate-200 border-[3px] border-slate-900 rounded-xl py-2 text-lg font-bold text-slate-800 active:scale-95 transition-all">닫기</button>
+    </div>
+</div>
+
+<script>
+
+// ════════════════════════════════════════════════════
+// GAS 설정 — 배포 후 URL 교체
+// ════════════════════════════════════════════════════
+// 앱스스크립트에서 열면 아래 자리에 실제 주소가 채워집니다.
+// 깃허브 등 다른 곳에 올리면 채워지지 않으므로, 그때는 빈 값으로 봅니다.
+const RAW_GAS_URL = '<?= GAS_URL ?>';
+const GAS_URL = (RAW_GAS_URL && RAW_GAS_URL.indexOf('http') === 0) ? RAW_GAS_URL : '';
+
+const APP_ID  = 'bookNavigator';
+const LS_EXEC = 'execUrl_' + APP_ID;
+
+// 학생용 링크(#c=)로 접속했는지
+function getLinkFromHash() {
+    const m = window.location.hash.match(/#c=(.+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+}
+// 이 기기에 저장해 둔 주소 (선생님이 한 번 연결하면 계속 유지)
+function getSavedExecUrl() {
+    try { return localStorage.getItem(LS_EXEC) || ''; } catch (e) { return ''; }
+}
+
+const HASH_GAS_URL   = getLinkFromHash();            // 학생 링크로 들어온 경우만 값이 있음
+const IS_STUDENT_LINK = !!HASH_GAS_URL;
+const LINKED_GAS_URL = HASH_GAS_URL || getSavedExecUrl() || null;
+const IS_GAS_NATIVE   = (typeof google !== 'undefined' && !!google.script && !!google.script.run);
+const DEMO_MODE       = !IS_GAS_NATIVE && !LINKED_GAS_URL && !GAS_URL;
+
+// 3-way 통신: google.script.run / fetch #c= / DEMO_MODE
+function callServer(action, payload = {}) {
+    return new Promise((resolve) => {
+        // ① google.script.run — GAS 웹앱 네이티브 환경
+        if (IS_GAS_NATIVE) {
+            google.script.run
+                .withSuccessHandler(res => resolve(res))
+                .withFailureHandler(err => resolve({ ok: false, error: (err && err.message) || String(err) }))
+                .serverAction(action, payload);
+            return;
+        }
+
+        // ② 연결된 시트로 요청 — 다른 곳에 올린 화면에서도 막히지 않는 방식
+        const targetUrl = LINKED_GAS_URL || GAS_URL;
+        if (targetUrl) {
+            requestSheet(targetUrl, action, payload)
+                .then(resolve)
+                .catch(err => resolve({ ok: false, error: (err && err.message) || '연결 실패' }));
+            return;
+        }
+
+        // ③ DEMO_MODE — localStorage 기반, 서버 없이 동작
+        resolve(handleDemoAction(action, payload));
+    });
+}
+
+// 연결된 시트에 요청 보내기
+//  앱 화면과 시트는 서로 다른 주소라, 브라우저 보안에 막히지 않는 방식으로 부릅니다.
+//  보낼 내용이 아주 길 때만 예전 방식으로 보냅니다.
+let _reqSeq = 0;
+function requestSheet(baseUrl, action, payload = {}) {
+    const params = new URLSearchParams({ action });
+    Object.entries(payload).forEach(([k, v]) =>
+        params.append(k, typeof v === 'object' ? JSON.stringify(v) : v)
+    );
+    const query = params.toString();
+
+    // 내용이 아주 길면 예전 방식으로 보냅니다.
+    if (query.length > 6000 && typeof fetch === 'function') {
+        return fetch(baseUrl, {
+            method : 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body   : JSON.stringify({ action, ...payload })
+        }).then(r => r.json());
+    }
+
+    return new Promise((resolve, reject) => {
+        const cb = '_bn_' + Date.now() + '_' + (_reqSeq++);
+        let done = false;
+        const timer = setTimeout(() => finish(null, true), 20000);
+
+        function finish(res, failed) {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+            const el = document.getElementById(cb);
+            if (el && el.parentNode) el.parentNode.removeChild(el);
+            if (failed) reject(new Error('연결에 실패했어요.'));
+            else resolve(res);
+        }
+
+        window[cb] = (res) => finish(res, false);
+
+        const s = document.createElement('script');
+        s.id = cb;
+        s.src = baseUrl + (baseUrl.indexOf('?') >= 0 ? '&' : '?') + query +
+                '&callback=' + encodeURIComponent(cb) + '&_=' + Date.now();
+        s.async = true;
+        s.onerror = () => finish(null, true);
+        document.body.appendChild(s);
+    });
+}
+
+// 주소가 살아 있는지 가볍게 확인
+function pingSheet(url) {
+    return requestSheet(url, 'getBuildInfo', {})
+        .then(res => !!(res && (res.ok || res.sig)))
+        .catch(() => false);
+}
+
+// DEMO_MODE 처리: student1~30 자동 채움, localStorage 기반
+function handleDemoAction(action, payload) {
+    switch (action) {
+        case 'getBuildInfo':
+            return { ok: true, sig: (typeof _BUILD_SIG !== 'undefined' ? _BUILD_SIG : ''), app: '북 내비게이터', built: 'DEMO' };
+
+        case 'getStudentList': {
+            const students = [];
+            for (let i = 1; i <= 30; i++) students.push('학생' + i);
+            return { ok: true, students };
+        }
+
+        case 'saveRecord':
+            // localStorage 저장은 saveRecord() 함수 내부에서 별도 처리됨
+            return { ok: true };
+
+        case 'getHistory': {
+            const logs    = JSON.parse(localStorage.getItem('bookNav_logs')) || [];
+            const records = logs.filter(l => l.user === payload.name).map(l => ({
+                date: l.date, name: l.user, book: l.book,
+                targetTime: l.targetTime, time: l.time,
+                extraReading: l.extraReading, pauseCount: l.pauseCount,
+                pre: l.pre, memo: l.memo, postQ: l.postQ, postA: l.postA
+            }));
+            return { ok: true, records };
+        }
+
+        case 'getTeacherQuestion':
+            return { ok: true, questions: [], mode: 'both' };
+
+        default:
+            return { ok: false, error: 'DEMO_MODE에서는 지원하지 않는 요청입니다.' };
+    }
+}
+
+
+// ════════════════════════════════════════════════════
+// 상태 변수
+// ════════════════════════════════════════════════════
+let currentUser       = "";
+
+// 로그인 임시 저장
+let pendingName   = "";
+
+let selectedPlanText     = "";
+let readingTimeDuration  = 0;
+let finalReadingTime     = 0;
+let hintStep             = { pre: 0, post: 0 };
+let maxStepReached       = 0;
+let sessionCompleted     = false; // true = 결과 화면까지 완료 후 저장된 상태
+let selectedPostQuestion = "";
+let currentTemplate = "";
+const templates = {
+    '🧩 이 글의 중심 생각을 한 문장으로 정리한다면?':           "이 글의 중심 생각은 ___ 입니다. 왜냐하면 ___ 이기 때문입니다.",
+    '🔗 이 이야기에서 중요한 사건의 원인과 결과는 무엇인가요?': "___ 때문에 ___ 한 일이 일어났고, 그 결과 ___ 하게 되었습니다.",
+    '🔍 글에 직접 나오지 않았지만 내가 짐작한 내용은 무엇인가요?': "글에는 나오지 않았지만, ___ 라는 것을 짐작할 수 있습니다. 왜냐하면 ___ 이기 때문입니다.",
+    '😲 책을 읽으며 가장 놀라거나 신기했던 장면은 무엇인가요?': "가장 신기했던 장면은 ___ 입니다. 왜냐하면 ___ 이기 때문입니다.",
+    '🦸 만약 내가 주인공이라면 이 상황에서 어떻게 했을까요?':   "만약 내가 주인공이라면 ___ 했을 것입니다. 왜냐하면 ___ 라는 생각이 들었기 때문입니다.",
+    '💌 작가님이 이 책을 통해 전하고 싶은 마음은 무엇일까요?':  "작가님은 우리에게 ___ 라는 마음을 전하고 싶으셨던 것 같습니다.",
+    '📢 친구에게 이 책을 추천한다면 뭐라고 말하고 싶나요?':     "이 책은 ___ 한 내용이라서 친구에게 꼭 읽어보라고 추천하고 싶습니다.",
+    'custom': ""
+};
+
+// 타이머
+let timerInterval    = null;
+let timerSeconds     = 0;
+let isTimerRunning   = false;
+let isExtraTime      = false;
+let extraSeconds     = 0;
+let timerInitialized = false;
+let pauseCount       = 0;  // toggleTimer에서만 증가
+
+const currentYear  = new Date().getFullYear();
+const currentMonth = new Date().getMonth();
+
+// ════════════════════════════════════════════════════
+// 초기화 — 키보드 네비게이션 설정
+// ════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+    loadStudentList();
+
+    // 학생용 배포 링크(#c=)로 접속한 화면에서만 설정 버튼을 완전히 제거
+    // display:none이 아닌 .remove()를 사용해 DOM 자체에서 삭제 (개발자 도구로도 복구 불가)
+    // 선생님이 직접 주소를 넣어 연결한 화면에서는 계속 보입니다.
+    if (IS_STUDENT_LINK) {
+        const settingsBtn = document.getElementById('teacher-settings-btn');
+        if (settingsBtn) settingsBtn.remove();
+    }
+});
+
+// ════════════════════════════════════════════════════
+// 교사 설정 — 시트 연결 / 학생 링크 복사
+// ════════════════════════════════════════════════════
+function openTeacherSettings() {
+    const overlay = document.getElementById('teacher-settings-overlay');
+    if (!overlay) return;
+    const input = document.getElementById('connect-sheet-input');
+    const saved = getSavedExecUrl() || LINKED_GAS_URL || '';
+    if (input && saved) input.value = saved;
+    // 연결된 상태에서만 '연결 해제'를 보여 줍니다.
+    const dis = document.getElementById('disconnect-wrap');
+    if (dis) dis.classList.toggle('hidden', !getSavedExecUrl());
+    overlay.classList.remove('hidden');
+}
+
+function closeTeacherSettings() {
+    const overlay = document.getElementById('teacher-settings-overlay');
+    if (overlay) overlay.classList.add('hidden');
+}
+
+function connectSheet() {
+    const url = document.getElementById('connect-sheet-input').value.trim();
+    if (!url) return showModal('잠깐만요! ✋', '시트 웹앱 주소를 입력해주세요.', false);
+    if (!url.startsWith('https://script.google.com/') || url.indexOf('/exec') < 0) {
+        return showModal('잠깐만요! ✋', '올바른 주소가 아니에요.\n예) https://script.google.com/macros/s/.../exec', false);
+    }
+    showModal('확인 중이에요 ⏳', '주소가 연결되는지 확인하고 있어요.', false);
+    // 되는 주소인지 먼저 확인하고, 될 때만 저장합니다.
+    pingSheet(url).then(ok => {
+        if (!ok) {
+            return showModal('연결하지 못했어요 😥',
+                '주소가 맞는지, 배포할 때 액세스 권한을 \'모든 사용자\'로 했는지 확인해주세요.', false);
+        }
+        try { localStorage.setItem(LS_EXEC, url); } catch (e) {}
+        const bar = document.getElementById('__demoBar');
+        if (bar) bar.remove();
+        showModal('연결됐어요! 🎉', '우리 반 명단을 불러올게요.', false);
+        setTimeout(() => window.location.reload(), 800);
+    });
+}
+
+// 연결 해제 — 체험 모드로 되돌립니다.
+function disconnectSheet() {
+    try { localStorage.removeItem(LS_EXEC); } catch (e) {}
+    showModal('연결을 해제했어요', '체험 모드로 돌아갑니다.', false);
+    setTimeout(() => {
+        window.location.hash = '';
+        window.location.reload();
+    }, 800);
+}
+
+function copyStudentLink() {
+    const connected = LINKED_GAS_URL || getSavedExecUrl();
+    if (!connected) {
+        return showModal('잠깐만요! ✋', '먼저 시트를 연결해주세요.', false);
+    }
+    const link = window.location.origin + window.location.pathname +
+                 '#c=' + encodeURIComponent(connected);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link)
+            .then(() => showModal('복사 완료! 📋', '학생용 링크가 복사되었어요.\n이 링크를 학생들에게 공유하세요.', false))
+            .catch(() => showModal('복사 실패 😥', '아래 링크를 직접 복사해주세요:<br><br>' + link, true));
+    } else {
+        showModal('링크 안내 📋', '아래 링크를 직접 복사해주세요:<br><br>' + link, true);
+    }
+}
+
+// 드롭다운에 학생 명단 채우기
+async function loadStudentList() {
+    const select = document.getElementById('student-select');
+    const res = await callServer('getStudentList');
+
+    if (res.ok && res.students && res.students.length > 0) {
+        select.innerHTML = '<option value="">이름을 선택하세요</option>' +
+            res.students.map(name => `<option value="${name}">${name}</option>`).join('');
+    } else {
+        // 명단을 불러오지 못한 경우 → 직접 입력 fallback 노출
+        select.innerHTML = '<option value="">명단을 불러올 수 없어요</option>';
+        const fallback = document.getElementById('login-fallback');
+        fallback.classList.remove('hidden'); fallback.classList.add('flex');
+    }
+}
+
+async function lookupStudent() {
+    const name = document.getElementById('student-select').value;
+    if (!name) return showModal('잠깐만요! ✋', '이름을 선택해주세요.', false);
+
+    pendingName = name;
+    document.getElementById('found-name').innerText = name;
+    document.getElementById('login-step1').classList.add('hidden');
+    const step2 = document.getElementById('login-step2');
+    step2.classList.remove('hidden'); step2.classList.add('flex');
+}
+
+// Step 2: 이름 확인 → 진행
+function confirmLogin() {
+    currentUser = pendingName;
+    proceedAfterLogin();
+}
+
+// GAS 미설정 fallback: 이름 직접 입력
+function loginDirect() {
+    const name = document.getElementById('username-fallback').value.trim();
+    if (!name)             return showModal('잠깐만요! ✋', '이름을 입력해주세요.', false);
+    if (isGibberish(name)) return showModal('잠깐만요! ✋', '정확한 이름을 입력해주세요!', false);
+    currentUser = name;
+    proceedAfterLogin();
+}
+
+// 다시 선택하기
+function resetLogin() {
+    pendingName = '';
+    const step2 = document.getElementById('login-step2');
+    step2.classList.add('hidden');
+    step2.classList.remove('flex');
+    document.getElementById('login-step1').classList.remove('hidden');
+    document.getElementById('student-select').value = '';
+}
+
+// ════════════════════════════════════════════════════
+// 이어하기 — 체험 모드에서 하던 활동을 기기에 저장/복원
+//   (시트 연결 상태에서는 시트에 저장되므로 쓰지 않습니다)
+// ════════════════════════════════════════════════════
+function progressKey() {
+    return 'progress:bookNavigator:' + (currentUser || '');
+}
+
+function saveProgress(viewId) {
+    if (!DEMO_MODE || !currentUser) return;
+    try {
+        const val = (id) => {
+            const el = document.getElementById(id);
+            return el ? (el.value !== undefined ? el.value : el.innerText) : '';
+        };
+        const snap = {
+            view          : viewId || currentViewId,
+            book          : val('book-title'),
+            pre           : val('pre-input'),
+            memo          : val('reading-memo'),
+            postQ         : val('res-post-q'),
+            postA         : val('res-post-a'),
+            planText      : selectedPlanText,
+            targetTime    : readingTimeDuration,
+            finalTime     : finalReadingTime,
+            maxStep       : maxStepReached,
+            postQuestion  : selectedPostQuestion,
+            savedAt       : Date.now()
+        };
+        localStorage.setItem(progressKey(), JSON.stringify(snap));
+    } catch (e) {}
+}
+
+function loadProgress() {
+    try {
+        const raw = localStorage.getItem(progressKey());
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+}
+
+function clearProgress() {
+    try { localStorage.removeItem(progressKey()); } catch (e) {}
+}
+
+// 하던 활동이 있으면 물어보고 그 화면부터 이어서 시작합니다.
+function tryResume() {
+    if (!DEMO_MODE) return false;
+    const snap = loadProgress();
+    if (!snap || !snap.view) return false;
+    // 아직 아무것도 안 썼거나 이미 끝낸 기록이면 묻지 않습니다.
+    const hasContent = !!(snap.book || snap.pre || snap.memo || snap.postA);
+    if (!hasContent || snap.view === 'view-record' || snap.view === 'view-login') return false;
+
+    if (!confirm('하던 독서 활동이 있어요.\n이어서 할까요?')) {
+        clearProgress();
+        return false;
+    }
+
+    const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (!el || !v) return;
+        if (el.value !== undefined) el.value = v; else el.innerText = v;
+    };
+    set('book-title', snap.book);
+    set('pre-input', snap.pre);
+    set('reading-memo', snap.memo);
+    set('res-post-q', snap.postQ);
+    set('res-post-a', snap.postA);
+    selectedPlanText     = snap.planText     || selectedPlanText;
+    readingTimeDuration  = snap.targetTime   || readingTimeDuration;
+    finalReadingTime     = snap.finalTime    || finalReadingTime;
+    maxStepReached       = snap.maxStep      || maxStepReached;
+    selectedPostQuestion = snap.postQuestion || selectedPostQuestion;
+    showView(snap.view);
+    return true;
+}
+
+// 로그인 공통 후처리
+function proceedAfterLogin() {
+    maxStepReached = 1;
+
+    // 각 화면의 이름 표시 업데이트
+    document.getElementById('display-name').innerText     = currentUser;
+    document.getElementById('display-name-rec').innerText = currentUser;
+    document.getElementById('guide-name').innerText       = currentUser;
+
+    // 하던 활동이 있으면 그 화면부터 이어서 시작
+    if (tryResume()) return;
+
+    showView('view-guide');
+}
+
+// ════════════════════════════════════════════════════
+// 유틸
+// ════════════════════════════════════════════════════
+function getTodayStr() {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+}
+
+function isGibberish(text) {
+    if (/(\S)\1{4,}/.test(text))     return true;
+    if (/[ㄱ-ㅎㅏ-ㅣ]{5,}/.test(text)) return true;
+    return false;
+}
+
+// ════════════════════════════════════════════════════
+// 화면 제어
+// ════════════════════════════════════════════════════
+let currentViewId = 'view-login';
+
+function showView(id) {
+    currentViewId = id;
+    // 체험 모드에서는 화면이 바뀔 때마다 하던 내용을 기기에 저장해 둡니다.
+    if (typeof saveProgress === 'function') {
+        try { saveProgress(id); } catch (e) {}
+    }
+    document.querySelectorAll('.view-section').forEach(el => {
+        el.classList.remove('flex', 'active');
+        el.classList.add('hidden');
+    });
+    const target = document.getElementById(id);
+    if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('flex');
+        target.classList.remove('pop-in');
+        void target.offsetWidth;
+        target.classList.add('pop-in');
+    }
+
+    // 탭 활성화 — 현재 화면에 맞는 탭 튀어나오기
+    const tabMap = {
+        'view-plan'   : 'view-plan',
+        'view-pre'    : 'view-pre',
+        'view-timer'  : 'view-pre',
+        'view-post'   : 'view-pre',
+        'view-result' : 'view-result',
+        'view-record' : 'view-record',
+    };
+    const activeTab = tabMap[id] || '';
+    document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        btn.classList.remove('tab-active');
+    });
+    const tabBtnMap = {
+        'view-plan'   : 0,
+        'view-pre'    : 1,
+        'view-result' : 2,
+        'view-record' : 3,
+    };
+    const btnIndex = tabBtnMap[activeTab];
+    if (btnIndex !== undefined) {
+        const btns = document.querySelectorAll('.nav-tab-btn');
+        if (btns[btnIndex]) btns[btnIndex].classList.add('tab-active');
+    }
+
+    if (id === 'view-record') renderGallery();
+    if (id === 'view-timer') {
+        if (!timerInitialized) { resetTimerUI(); timerInitialized = true; }
+    } else {
+        pauseTimer();
+    }
+}
+
+// 완료된 세션에서 이전 화면으로 돌아갈 때 입력값 전체 초기화
+function resetSessionInputs() {
+    document.getElementById('book-title').value   = '';
+    document.getElementById('reading-time').value  = '';
+    document.getElementById('reading-memo').value  = '';
+    document.getElementById('pre-input').value     = '';
+    document.getElementById('post-input').value    = '';
+    document.getElementById('final-actions').classList.add('hidden');
+    document.getElementById('final-actions').classList.remove('flex');
+    timerInitialized = false;
+    isExtraTime      = false;
+    extraSeconds     = 0;
+    maxStepReached   = 0;
+    sessionCompleted = false;
+}
+
+function goToStep(id) {
+    // 완료된 세션에서 이전 단계로 가면 자동으로 새 세션 취급
+    if (sessionCompleted && (id === 'view-plan' || id === 'view-timer')) {
+        resetSessionInputs();
+    }
+    showView(id);
+}
+function startJourney() { showView('view-plan'); }
+
+function handleTabClick(targetView) {
+    if (!currentUser)                                        return showModal('잠깐만요! ✋', '먼저 이름을 확인하고 시작해주세요.', false);
+    // 완료된 세션에서 준비/탐험 탭을 누르면 자동으로 새 세션 취급
+    if (sessionCompleted && (targetView === 'view-plan' || targetView === 'view-pre')) {
+        resetSessionInputs();
+        if (targetView === 'view-pre') return showModal('준비부터 해요! 🚧', '새로운 책을 먼저 준비해주세요.', true);
+    }
+    if (targetView === 'view-pre'    && maxStepReached < 2)  return showModal('준비 중이에요! 🚧', '아직 계획을 다 세우지 못했어요.', true);
+    if (targetView === 'view-result' && maxStepReached < 3)  return showModal('탐험 중이에요! 🔭', '아직 탐험이 끝나지 않았어요.', true);
+    // 기록 탭 이동 시 자동 저장
+    if (targetView === 'view-record' && maxStepReached >= 3) saveRecord();
+    showView(targetView);
+}
+
+// ════════════════════════════════════════════════════
+// 계획 확인
+// ════════════════════════════════════════════════════
+function confirmPlan() {
+    const title   = document.getElementById('book-title').value.trim();
+    const timeVal = document.getElementById('reading-time').value.trim();
+    if (!title)                                               return showModal('잠깐만요! ✋', '읽을 책 제목을 입력해주세요.', false);
+    if (isGibberish(title))                                   return showModal('잠깐만요! ✋', '정확한 책 제목을 입력해주세요!', false);
+    if (!timeVal || isNaN(timeVal) || parseInt(timeVal) <= 0) return showModal('잠깐만요! ✋', '독서 시간을 정확한 숫자로 입력해주세요.', false);
+
+    readingTimeDuration = parseInt(timeVal);
+    finalReadingTime    = readingTimeDuration;
+    timerInitialized    = false;
+    extraSeconds        = 0;
+
+    showModal('준비 완료!', `"${timeVal}분" 동안 읽기로 했군요.<br>선택한 만큼 차근차근 해봐요!`, true);
+    const closeBtn = document.getElementById('modal-close-btn');
+    if (closeBtn) {
+        const newBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newBtn, closeBtn);
+        newBtn.onclick = () => {
+            closeModal();
+            if (maxStepReached < 2) maxStepReached = 2;
+            goToStep('view-pre');
+        };
+    }
+}
+
+// ════════════════════════════════════════════════════
+// 타이머
+// ════════════════════════════════════════════════════
+function resetTimerUI() {
+    clearInterval(timerInterval);
+    isTimerRunning = false;
+    isExtraTime    = false;
+    extraSeconds   = 0;
+    pauseCount     = 0;
+    timerSeconds   = readingTimeDuration * 60;
+    updateTimerDisplay();
+    const elems = {
+        label:    document.getElementById('timer-label'),
+        toggle:   document.getElementById('timer-toggle-btn'),
+        ring:     document.getElementById('timer-ring'),
+        msg:      document.getElementById('timer-msg'),
+        finOpts:  document.getElementById('timer-finish-options'),
+        controls: document.getElementById('timer-controls'),
+    };
+    if (elems.label)    elems.label.innerText    = '남은 시간';
+    if (elems.toggle)   elems.toggle.innerText   = '▶';
+    if (elems.ring)     elems.ring.classList.remove('pulse-ring');
+    if (elems.msg)      elems.msg.innerText      = '시작 버튼을 눌러주세요!';
+    if (elems.finOpts)  { elems.finOpts.classList.add('hidden');    elems.finOpts.classList.remove('flex'); }
+    if (elems.controls) { elems.controls.classList.remove('hidden'); elems.controls.classList.add('flex'); }
+    const extraFinBtn = document.getElementById('extra-finish-btn');
+    if (extraFinBtn) extraFinBtn.classList.add('hidden');
+}
+
+// toggleTimer — 여기서만 pauseCount 증가
+function toggleTimer() {
+    if (isTimerRunning) {
+        pauseCount++;   // 학생이 직접 누른 경우만 카운트
+        pauseTimer();
+    } else {
+        startTimer();
+    }
+}
+
+function startTimer() {
+    isTimerRunning = true;
+    const toggle = document.getElementById('timer-toggle-btn');
+    const ring   = document.getElementById('timer-ring');
+    const msg    = document.getElementById('timer-msg');
+    if (toggle) toggle.innerText = '⏸';
+    if (ring)   ring.classList.add('pulse-ring');
+    if (msg)    msg.innerText = isExtraTime ? '추가 독서 중... 멋져요! 📚' : '책 속으로 풍덩! 🏊‍♂️';
+
+    timerInterval = setInterval(() => {
+        if (isExtraTime) {
+            timerSeconds++;
+            // extraSeconds = 목표시간 초과분만
+            extraSeconds = timerSeconds - readingTimeDuration * 60;
+            updateTimerDisplay();
+        } else {
+            if (timerSeconds > 0) { timerSeconds--; updateTimerDisplay(); }
+            else                  { finishTimer(); }
+        }
+    }, 1000);
+}
+
+function pauseTimer() {
+    isTimerRunning = false;
+    clearInterval(timerInterval);
+    const toggle = document.getElementById('timer-toggle-btn');
+    const ring   = document.getElementById('timer-ring');
+    const msg    = document.getElementById('timer-msg');
+    if (toggle) toggle.innerText = '▶';
+    if (ring)   ring.classList.remove('pulse-ring');
+    if (msg)    msg.innerText = '잠시 충전 중... 🔋';
+}
+
+function finishTimer() {
+    pauseTimer();
+    finalReadingTime = readingTimeDuration;
+    const msg      = document.getElementById('timer-msg');
+    const controls = document.getElementById('timer-controls');
+    const finOpts  = document.getElementById('timer-finish-options');
+    if (msg)      msg.innerText = '약속한 시간이 지났어요! ⏰';
+    if (controls) { controls.classList.add('hidden');    controls.classList.remove('flex'); }
+    if (finOpts)  { finOpts.classList.remove('hidden');  finOpts.classList.add('flex'); }
+}
+
+function updateTimerDisplay() {
+    const m  = Math.floor(timerSeconds / 60);
+    const s  = timerSeconds % 60;
+    const el = document.getElementById('timer-display');
+    if (el)  el.innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function addMoreTime() {
+    isExtraTime  = true;
+    extraSeconds = 0;
+    // 목표 시간부터 카운트업 시작
+    timerSeconds = readingTimeDuration * 60;
+    const label      = document.getElementById('timer-label');
+    const controls   = document.getElementById('timer-controls');
+    const finOpts    = document.getElementById('timer-finish-options');
+    const extraFinBtn= document.getElementById('extra-finish-btn');
+    if (label)       label.innerText = '총 독서 시간';
+    if (finOpts)     { finOpts.classList.add('hidden');    finOpts.classList.remove('flex'); }
+    if (controls)    { controls.classList.remove('hidden'); controls.classList.add('flex'); }
+    if (extraFinBtn) { extraFinBtn.classList.remove('hidden'); extraFinBtn.classList.add('flex'); }
+    updateTimerDisplay();
+    startTimer();
+}
+
+function finishReading() {
+    pauseTimer();
+    if (isExtraTime) {
+        finalReadingTime = readingTimeDuration + Math.ceil(extraSeconds / 60);
+    } else {
+        const elapsed    = readingTimeDuration * 60 - timerSeconds;
+        finalReadingTime = Math.max(1, Math.ceil(elapsed / 60));
+    }
+    // 메모 미리보기 채우기
+    const memoText = document.getElementById('reading-memo').value.trim();
+    const memoArea = document.getElementById('memo-preview-area');
+    const memoPrev = document.getElementById('memo-preview-text');
+    if (memoText && memoArea && memoPrev) {
+        memoPrev.innerText = memoText;
+        memoArea.classList.remove('hidden');
+    } else if (memoArea) {
+        memoArea.classList.add('hidden');
+    }
+    // 선생님 질문 GAS에서 불러오기
+    loadTeacherQuestion();
+    goToStep('view-post');
+}
+
+// 선생님 질문 GAS 조회 — 여러 질문 처리
+async function loadTeacherQuestion() {
+    const dropWrap = document.getElementById('q-dropdown-wrap');
+
+    const res = await callServer('getTeacherQuestion');
+
+    // mode: 'teacher' | 'default' | 'both' (기본값: both)
+    const mode      = res.mode || 'both';
+    const questions = res.questions || [];
+
+    // 선생님 질문이 있고, 선생님만 or 모두 모드일 때 드롭다운에 추가
+    if (questions.length > 0 && (mode === 'teacher' || mode === 'both')) {
+        const list = document.getElementById('q-dropdown-list');
+        if (list) {
+            // 선생님 질문을 드롭다운 맨 위에 삽입
+            const divider = document.createElement('div');
+            divider.className = 'px-4 py-1 text-sm font-black text-indigo-500 bg-indigo-50';
+            divider.textContent = '👩‍🏫 선생님 질문';
+            list.insertBefore(divider, list.firstChild);
+
+            questions.slice().reverse().forEach(q => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'q-drop-item w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 border-b border-slate-100 text-lg font-bold text-indigo-700';
+                btn.innerHTML = `<span class="text-xl shrink-0">👩‍🏫</span><span>${q}</span>`;
+                btn.onclick = () => selectFromDropdown(q, '👩‍🏫');
+                list.insertBefore(btn, list.children[1]);
+            });
+        }
+    }
+
+    // 기본만 모드일 때 → 기본 질문만, 선생님만 모드일 때 선생님 질문만
+    if (mode === 'teacher' && questions.length > 0) {
+        // 기본 질문 항목 숨기기 (선생님 질문 + 구분선 이후 항목)
+        const list = document.getElementById('q-dropdown-list');
+        if (list) {
+            Array.from(list.children).forEach(el => {
+                if (!el.classList.contains('q-drop-item') || el.querySelector('.text-indigo-700')) return;
+                if (!el.textContent.includes('👩‍🏫')) el.classList.add('hidden');
+            });
+        }
+    }
+}
+
+// 선생님 질문 선택
+
+
+
+function toggleMemoPreview() {
+    const p   = document.getElementById('memo-preview-text');
+    const btn = document.querySelector('[onclick="toggleMemoPreview()"]');
+    if (!p) return;
+    const isCollapsed = p.dataset.collapsed !== 'false';
+    if (isCollapsed) {
+        p.style.maxHeight = 'none';
+        p.style.overflow  = 'visible';
+        p.dataset.collapsed = 'false';
+        if (btn) btn.innerText = '접기';
+    } else {
+        p.style.maxHeight = '0px';
+        p.style.overflow  = 'hidden';
+        p.dataset.collapsed = 'true';
+        if (btn) btn.innerText = '펼치기';
+    }
+}
+
+// ════════════════════════════════════════════════════
+// 한 문장 정리
+// ════════════════════════════════════════════════════
+// 드롭다운 토글
+function toggleQDropdown() {
+    const list  = document.getElementById('q-dropdown-list');
+    const arrow = document.getElementById('q-dropdown-arrow');
+    const isHidden = list.classList.contains('hidden');
+    list.classList.toggle('hidden', !isHidden);
+    arrow.style.transform = isHidden ? 'rotate(180deg)' : '';
+}
+
+// 드롭다운에서 질문 선택
+function selectFromDropdown(question, emoji) {
+    // 드롭다운 닫기
+    document.getElementById('q-dropdown-list').classList.add('hidden');
+    document.getElementById('q-dropdown-arrow').style.transform = '';
+
+    // 선택된 질문 표시
+    const label = document.getElementById('q-dropdown-label');
+    label.textContent = emoji + ' ' + (question === 'custom' ? '나만의 질문 만들기' : question.replace(/^[^\s]+\s/, ''));
+
+    // 하이라이트
+    document.querySelectorAll('.q-drop-item').forEach(b => b.classList.remove('bg-yellow-100'));
+    event.currentTarget.classList.add('bg-yellow-100');
+
+    // 기존 selectPostQuestion 호출
+    selectPostQuestion(null, question);
+}
+
+// 드롭다운 외부 클릭 시 닫기
+document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('q-dropdown-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('q-dropdown-list')?.classList.add('hidden');
+        const arrow = document.getElementById('q-dropdown-arrow');
+        if (arrow) arrow.style.transform = '';
+    }
+});
+
+function selectPostQuestion(btn, question) {
+    if (btn) {
+        document.querySelectorAll('.q-select-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+    }
+    const display     = document.getElementById('selected-q-display');
+    const customInput = document.getElementById('post-custom-q');
+    const textarea    = document.getElementById('post-input');
+    if (question === 'custom') {
+        selectedPostQuestion = 'custom';
+        display.innerText = '✨ 직접 질문을 만들어보세요:';
+        customInput.classList.remove('hidden'); customInput.focus();
+        textarea.value = '';
+        textarea.placeholder = '나만의 멋진 생각을 자유롭게 적어보세요.';
+        document.getElementById('input-mode-btns').classList.add('hidden');
+    } else {
+        selectedPostQuestion = question;
+        currentTemplate = templates[question] || '';
+        display.innerHTML = `<span class="text-indigo-600">Q.</span> ${question}`;
+        customInput.classList.add('hidden');
+        textarea.value = '';
+        textarea.placeholder = '위에서 입력 방식을 선택해주세요!';
+        // 모드 선택 버튼 표시
+        const modeBtns = document.getElementById('input-mode-btns');
+        modeBtns.classList.remove('hidden');
+        modeBtns.classList.add('flex');
+        document.querySelectorAll('.mode-btn').forEach(b => {
+            b.classList.remove('border-indigo-500', 'bg-indigo-100', 'border-slate-500', 'bg-slate-100');
+        });
+    }
+}
+
+// 입력 모드 설정
+function setInputMode(mode) {
+    const textarea = document.getElementById('post-input');
+
+    document.querySelectorAll('.mode-btn').forEach(b => {
+        const isMe = b.dataset.mode === mode;
+        b.classList.toggle('bg-indigo-100', isMe);
+        b.classList.toggle('border-indigo-500', isMe);
+        b.classList.toggle('text-indigo-700', isMe);
+        b.classList.toggle('bg-slate-50', !isMe);
+        b.classList.toggle('border-slate-300', !isMe);
+    });
+
+    if (mode === 'blank') {
+        textarea.value = currentTemplate;
+        textarea.placeholder = '';
+        textarea.focus();
+        const blankIdx = textarea.value.indexOf('___');
+        if (blankIdx >= 0) textarea.setSelectionRange(blankIdx, blankIdx + 3);
+    } else {
+        textarea.value = '';
+        textarea.placeholder = '자유롭게 나의 생각을 적어보세요.';
+        textarea.focus();
+    }
+}
+
+// ════════════════════════════════════════════════════
+// 유효성 검사
+// ════════════════════════════════════════════════════
+function validateAndGo(step) {
+    if (step === 'pre') {
+        const val = document.getElementById('pre-input').value.trim();
+        if (!val)             return showModal('잠깐만요! ✋', '내용을 입력해주세요.', false);
+        if (isGibberish(val)) return showModal('잠깐만요! ✋', '정확한 내용으로 입력해주세요!', false);
+        goToStep('view-timer');
+
+    } else if (step === 'post') {
+        if (!selectedPostQuestion) return showModal('잠깐만요! ✋', '질문을 먼저 선택해주세요.', false);
+        let finalQ = selectedPostQuestion;
+        if (selectedPostQuestion === 'custom') {
+            finalQ = document.getElementById('post-custom-q').value.trim();
+            if (!finalQ)             return showModal('잠깐만요! ✋', '직접 만들 질문을 입력해주세요.', false);
+            if (isGibberish(finalQ)) return showModal('잠깐만요! ✋', '정확한 질문을 입력해주세요!', false);
+        }
+        const val = document.getElementById('post-input').value.trim();
+        if (!val)             return showModal('잠깐만요! ✋', '나의 생각을 적어주세요.', false);
+        if (isGibberish(val)) return showModal('잠깐만요! ✋', '정확한 내용으로 입력해주세요!', false);
+
+        document.getElementById('res-post-q').innerText = finalQ;
+        document.getElementById('res-post-a').innerText = val;
+        finishJourney();
+    }
+}
+
+// ════════════════════════════════════════════════════
+// 결과 화면 진입 + 임시 저장
+// ════════════════════════════════════════════════════
+function finishJourney() {
+    const today = new Date();
+
+    document.getElementById('res-name-display').innerText       = currentUser;
+
+    document.getElementById('res-date-display').innerText       = `${currentYear}년 ${currentMonth+1}월 ${today.getDate()}일`;
+    document.getElementById('res-book-title-display').innerText = document.getElementById('book-title').value || '—';
+    document.getElementById('res-plan-display').innerText       = `${finalReadingTime}분`;
+    document.getElementById('res-pre').innerText                = document.getElementById('pre-input').value;
+    document.getElementById('res-memo').innerText               = document.getElementById('reading-memo').value || '작성된 메모가 없습니다.';
+
+    if (maxStepReached < 3) maxStepReached = 3;
+    saveRecord();
+    sessionCompleted = true;
+    showView('view-result');
+}
+
+// ════════════════════════════════════════════════════
+// 저장
+// ════════════════════════════════════════════════════
+function buildRecordObj(emoji) {
+    return {
+        id          : Date.now(),
+        date        : getTodayStr(),
+        user        : currentUser,
+        book        : document.getElementById('book-title').value,
+        targetTime  : readingTimeDuration,
+        time        : finalReadingTime,
+        extraReading: isExtraTime ? 'Y' : 'N',
+        pauseCount  : pauseCount,
+        pre         : document.getElementById('pre-input').value,
+        memo        : document.getElementById('reading-memo').value,
+        postQ       : document.getElementById('res-post-q').innerText,
+        postA       : document.getElementById('res-post-a').innerText,
+        emoji       : emoji
+    };
+}
+
+
+
+function saveRecord() {
+    const dateStr = getTodayStr();
+    const book = document.getElementById('book-title').value;
+
+    // 활동을 끝냈으니 이어하기 기록은 지웁니다.
+    if (typeof clearProgress === 'function') {
+        try { clearProgress(); } catch (e) {}
+    }
+
+    // localStorage 저장
+    let logs = JSON.parse(localStorage.getItem('bookNav_logs')) || [];
+    const rec = buildRecordObj('');
+    const idx = logs.findIndex(l => l.date === dateStr && l.book === book && l.user === currentUser);
+    if (idx >= 0) logs[idx] = { ...logs[idx], ...rec };
+    else logs.push(rec);
+    localStorage.setItem('bookNav_logs', JSON.stringify(logs));
+
+    // GAS 전송
+    const gasData = {
+        date: dateStr, name: currentUser, book,
+        targetTime: readingTimeDuration, actualTime: finalReadingTime,
+        extraReading: isExtraTime ? 'Y' : 'N', pauseCount,
+        pre: document.getElementById('pre-input').value,
+        memo: document.getElementById('reading-memo').value,
+        postQ: document.getElementById('res-post-q').innerText,
+        postA: document.getElementById('res-post-a').innerText,
+    };
+    callServer('saveRecord', { data: gasData }).then(res => {
+        if (!res.ok) console.warn('GAS 저장 실패:', res.error);
+    });
+}
+
+// ════════════════════════════════════════════════════
+// 갤러리 렌더링
+// ════════════════════════════════════════════════════
+// 활동 안내 팝업
+function showActivityInfo(step) {
+    const info = {
+        pre: {
+            title: '💡 내용 예측하기란?',
+            body: '책의 <b class="text-blue-600">표지·제목·삽화</b>를 보거나 앞서 읽은 내용을 떠올리며 앞으로 어떤 내용이 나올지 미리 짐작해보는 활동이에요.<br><br><b class="text-orange-500">정답이 없으니 틀려도 괜찮아요!</b> 내 생각을 자유롭게 적어보세요.<br><br>✅ <b class="text-green-600">읽기 집중력</b>과 <b class="text-green-600">이해력</b>을 높이는 데 도움이 돼요.'
+        },
+        timer: {
+            title: '📚 책 속으로!란?',
+            body: '<b class="text-blue-600">타이머</b>를 켜고 목표 시간 동안 책에만 <b class="text-blue-600">집중해서 읽는</b> 활동이에요.<br><br>읽으면서 떠오르는 생각이나 궁금한 점은 <b class="text-orange-500">오른쪽 메모칸</b>에 바로 적어두세요.<br><br>✅ <b class="text-green-600">독서 습관</b>과 <b class="text-green-600">지속적인 집중력</b>을 기르는 데 도움이 돼요.'
+        },
+        post: {
+            title: '✍️ 생각 정리하기란?',
+            body: '읽은 내용을 나만의 언어로 완성해 보는 활동이에요.<br><br>질문을 고른 뒤 두 가지 방법 중 하나를 선택할 수 있어요.<br><b class="text-orange-500">[📝 빈칸 채우기]</b>는 문장 틀이 나타나요. <b class="text-orange-500">___</b> 부분만 채우면 돼서 처음 쓰는 친구들도 쉽게 완성할 수 있어요.<br><b class="text-orange-500">[✏️ 직접 입력하기]</b>는 빈 칸에 자유롭게 나만의 문장을 써요.<br><br>✅ <b class="text-green-600">핵심 이해력</b>과 <b class="text-green-600">표현력</b>을 기르는 데 도움이 돼요.'
+        }
+    };
+    const { title, body } = info[step];
+    showModal(title, body, true);
+}
+
+async function renderGallery() {
+    const grid = document.getElementById('gallery-grid');
+
+    // ① localStorage 데이터 즉시 표시
+    const allLocal = JSON.parse(localStorage.getItem('bookNav_logs')) || [];
+    let userLogs   = allLocal.filter(l => l.user === currentUser)
+                             .sort((a, b) => b.date.localeCompare(a.date));
+    renderCards(userLogs);
+    renderStats(userLogs);
+
+    // ② GAS에서 추가 기록 백그라운드 로드
+    try {
+        const res = await callServer('getHistory', { name: currentUser });
+        if (res.ok && res.records) {
+            // GAS 데이터를 신뢰 기준으로 - 해당 사용자 기록 완전 교체
+            const gasLogs = res.records.map(r => ({
+                user        : r.name,   date       : r.date,
+                book        : r.book,   targetTime : r.targetTime,
+                time        : r.time,   extraReading: r.extraReading,
+                pauseCount  : r.pauseCount,
+                pre         : r.pre,    memo       : r.memo,
+                postQ       : r.postQ,  postA      : r.postA,
+                emoji       : r.emoji || ''
+            }));
+
+            // 다른 사용자 기록은 유지, 현재 사용자 기록만 GAS로 교체
+            const otherLogs = allLocal.filter(l => l.user !== currentUser);
+            const merged    = [...otherLogs, ...gasLogs];
+            localStorage.setItem('bookNav_logs', JSON.stringify(merged));
+
+            const newUserLogs = gasLogs.sort((a, b) => b.date.localeCompare(a.date));
+            renderCards(newUserLogs);
+            renderStats(newUserLogs);
+        }
+    } catch(e) { /* GAS 실패 시 localStorage만 유지 */ }
+}
+
+function renderStats(userLogs) {
+    const statsEl    = document.getElementById('record-stats');
+    const statsInner = document.getElementById('record-stats-inner');
+    if (!statsEl || !statsInner) return;
+    if (userLogs.length === 0) { statsEl.classList.add('hidden'); return; }
+    const totalBooks = userLogs.length;
+    const totalTime  = userLogs.reduce((s, l) => s + (Number(l.time) || 0), 0);
+    const avgTime    = Math.round(totalTime / totalBooks);
+    statsInner.innerHTML = `
+        <div class="stat-card" style="border-color:#fde68a">
+            <div class="stat-value" style="color:#d97706">📚 ${totalBooks}</div>
+            <div class="stat-label">읽은 책</div>
+        </div>
+        <div class="stat-card" style="border-color:#bfdbfe">
+            <div class="stat-value" style="color:#2563eb">⏱️ ${totalTime}분</div>
+            <div class="stat-label">총 독서 시간</div>
+        </div>
+        <div class="stat-card" style="border-color:#bbf7d0">
+            <div class="stat-value" style="color:#16a34a">📊 ${avgTime}분</div>
+            <div class="stat-label">평균 독서 시간</div>
+        </div>`;
+    statsEl.classList.remove('hidden');
+}
+
+function renderCards(userLogs) {
+    const grid = document.getElementById('gallery-grid');
+    if (userLogs.length === 0) {
+        grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-10 bg-white/60 rounded-xl"><span class="text-4xl mb-2">📭</span><span class="font-bold">아직 탐험 기록이 없어요.</span></div>`;
+        return;
+    }
+    const emojiColors = { '🚩': 'from-yellow-100 to-amber-200', '💎': 'from-blue-100 to-cyan-200', '🏃': 'from-green-100 to-emerald-200' };
+    grid.innerHTML = '';
+    userLogs.forEach(log => {
+        const div = document.createElement('div');
+        div.className = 'report-card-mini';
+        div.onclick   = () => showLogDetail(log);
+        const bg = emojiColors[log.emoji] || 'from-slate-100 to-slate-200';
+        div.innerHTML = `
+            <div class="w-20 h-20 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center border-2 border-slate-200 shrink-0">
+                <span class="text-4xl">${log.emoji === '⏳' ? '' : (log.emoji || '')}</span>
+            </div>
+            <div class="flex-1 flex flex-col gap-1.5 text-left min-w-0 justify-center">
+                <span class="text-base text-slate-400 font-bold">${log.date}</span>
+                <span class="text-xl font-black text-slate-900 leading-tight">${log.book}</span>
+                <div class="flex flex-wrap gap-1">
+                    <span class="text-sm bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded">목표 ${log.targetTime||'?'}분 → 실제 ${log.time||0}분</span>
+                    <span class="text-sm bg-orange-50 text-orange-600 font-bold px-2 py-0.5 rounded">일시정지 ${log.pauseCount||0}회</span>
+                    ${log.extraReading === 'Y' ? '<span class="text-sm bg-green-50 text-green-600 font-bold px-2 py-0.5 rounded">추가 독서 ✓</span>' : ''}
+                </div>
+            </div>`;
+        grid.appendChild(div);
+    });
+}
+
+function showLogDetail(log) {
+    showModal('📜 탐험 기록 상세', `
+        <div class="flex flex-col gap-3 text-left">
+            <!-- 기본 정보 -->
+            <div class="flex flex-col gap-2 pb-3 border-b-2 border-slate-200">
+                <p class="text-2xl font-black text-slate-900">${log.book || '—'}</p>
+                <div class="flex flex-wrap gap-2">
+                    <span class="bg-slate-100 px-3 py-1 rounded-lg text-lg font-bold text-slate-600">${log.date}</span>
+                    <span class="bg-blue-100 px-3 py-1 rounded-lg text-lg font-bold text-blue-700">목표 ${log.targetTime||'?'}분 → 실제 ${log.time||'?'}분</span>
+                    <span class="bg-orange-100 px-3 py-1 rounded-lg text-lg font-bold text-orange-700">일시정지 ${log.pauseCount||0}회</span>
+                    ${log.extraReading === 'Y' ? '<span class="bg-green-100 px-3 py-1 rounded-lg text-lg font-bold text-green-700">추가 독서 ✓</span>' : ''}
+                </div>
+                <div class="text-3xl">${log.emoji === '⏳' ? '' : (log.emoji || '')}</div>
+            </div>
+            <!-- 내용 -->
+            <div>
+                <span class="bg-orange-100 px-3 py-1 rounded-lg text-lg font-bold text-orange-700">📍 예측한 내용</span>
+                <p class="mt-2 text-xl text-slate-800 font-medium whitespace-pre-wrap">${log.pre||'—'}</p>
+            </div>
+            <div>
+                <span class="bg-pink-100 px-3 py-1 rounded-lg text-lg font-bold text-pink-700">✏️ 독서 메모</span>
+                <p class="mt-2 text-xl text-slate-800 font-medium whitespace-pre-wrap">${log.memo||'—'}</p>
+            </div>
+            <div>
+                <span class="bg-lime-100 px-3 py-1 rounded-lg text-lg font-bold text-green-700">✍️ 생각 정리하기</span>
+                <div class="mt-2 p-3 bg-slate-50 rounded-xl">
+                    <p class="text-lg font-bold text-green-700 mb-1">${log.postQ||''}</p>
+                    <p class="text-xl text-slate-800 font-bold">${log.postA||'—'}</p>
+                </div>
+            </div>
+        </div>
+    `, true, '닫기');
+}
+
+// ════════════════════════════════════════════════════
+// 모달
+// ════════════════════════════════════════════════════
+function showModal(title, body, isHtml = false, btnText = '확인') {
+    const header = document.getElementById('modal-header');
+    if (!header) return;
+    header.innerText = title;
+    const bodyEl = document.getElementById('modal-body');
+    if (isHtml) bodyEl.innerHTML = body; else bodyEl.innerText = body;
+    const btn = document.getElementById('modal-close-btn');
+    if (btn) {
+        btn.innerText = btnText;
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.onclick = closeModal;
+    }
+    document.getElementById('modal-overlay').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+
+// ════════════════════════════════════════════════════
+// 이미지 저장 & 공유
+// ════════════════════════════════════════════════════
+// 다음 독서 시작 — 준비 화면으로, 책 제목 초기화
+function startNewReading() {
+    resetSessionInputs();
+    showView('view-plan');
+}
+
+// 오늘 독서 완료 — 기록 탭으로 이동
+function finishToday() {
+    showView('view-record');
+}
+
+// 홈으로 — 로그인 화면으로
+function goHome() {
+    resetLogin();
+    showView('view-login');
+}
+
+function saveImage() {
+    const el    = document.getElementById('view-result');
+    const clone = el.cloneNode(true);
+    Object.assign(clone.style, {
+        position: 'fixed', top: '0', left: '0',
+        width: el.offsetWidth + 'px', height: 'auto',
+        maxHeight: 'none', overflow: 'visible',
+        zIndex: '-9999', backgroundColor: '#FEFCE8'
+    });
+    const actions = clone.querySelector('#final-actions');
+    if (actions) actions.remove();
+    document.body.appendChild(clone);
+    html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: '#FEFCE8' }).then(canvas => {
+        const d    = new Date();
+        const link = document.createElement('a');
+        link.download = `독서탐험_${currentUser}_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.png`;
+        link.href     = canvas.toDataURL();
+        link.click();
+        document.body.removeChild(clone);
+    });
+}
+</script>
+
+<script>
+// ════════════════════════════════════════════════════
+// 뷰포트 자동 스케일
+// 바인더(960) + 탭(64)을 하나의 단위로 중앙 정렬
+// 바인더를 탭 절반(32px)만큼 왼쪽으로 오프셋
+// ════════════════════════════════════════════════════
+(function() {
+    const BASE_W    = 960;
+    const BASE_H    = 640;
+    const TAB_W     = 64;   // 오른쪽 탭 너비
+    const MIN_SCALE = 0.4;
+    const MAX_SCALE = 1.6;
+
+    function applyScale() {
+        const wrapper = document.getElementById('scale-wrapper');
+        if (!wrapper) return;
+
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        // 바인더+탭 전체 너비(960+64=1024)를 화면에 맞춤
+        const scaleW = vw / (BASE_W + TAB_W);
+        const scaleH = vh / BASE_H;
+        const scale  = Math.min(scaleW, scaleH, MAX_SCALE);
+        const finalScale = Math.max(scale, MIN_SCALE);
+
+        // 바인더를 탭 절반만큼 왼쪽으로 오프셋
+        // → 바인더+탭 전체가 화면 중앙에 정렬됨
+        const offsetX = -(TAB_W / 2) * finalScale;
+
+        wrapper.style.transform = `translateX(${offsetX}px) scale(${finalScale})`;
+
+        document.body.style.backgroundColor = '#FEF9C3';
+    }
+
+    applyScale();
+    window.addEventListener('resize', applyScale);
+})();
+</script>
+
+<script>
+/* 체험 모드 안내 배너 (전 앱 일관) */
+(function () {
+  function isDemo() {
+    try {
+      if (/[#&]c=/.test(location.hash || '')) return false;
+      if (typeof google !== 'undefined' && google.script && google.script.run) return false;
+      if (localStorage.getItem('execUrl_bookNavigator')) return false;
+      return true;
+    } catch (e) { return true; }
+  }
+  function show() {
+    if (document.getElementById('__demoBar')) return;
+    if (!isDemo()) return;
+    var bar = document.createElement('div');
+    bar.id = '__demoBar';
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:#1f2937;color:#fff;font-size:13px;line-height:1.45;padding:9px 38px calc(9px + env(safe-area-inset-bottom)) 14px;text-align:center;font-family:sans-serif;box-shadow:0 -2px 10px rgba(0,0,0,0.25);';
+    bar.textContent = '체험 모드예요 · 활동 기록은 이 기기에만 저장돼요(이어하기 가능). 선생님이 구글 시트를 연결하면 시트에 저장됩니다.';
+    var x = document.createElement('button');
+    x.type = 'button'; x.setAttribute('aria-label', '닫기'); x.textContent = '\u2715';
+    x.style.cssText = 'position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:#fff;font-size:16px;line-height:1;cursor:pointer;padding:6px;';
+    x.onclick = function () { try { bar.remove(); } catch (e) { bar.style.display = 'none'; } };
+    bar.appendChild(x);
+    document.body.appendChild(bar);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', show);
+  } else { show(); }
+})();
+</script>
+</body>
+</html>
