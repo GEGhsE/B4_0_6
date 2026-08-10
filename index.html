@@ -89,14 +89,14 @@
         /* 책장 - 고정 2열 (scale이 크기 담당) */
         .bookshelf-container { background-color:#FDF5E6; padding:16px; }
         .bookshelf-frame { border:12px solid #FFE4B5; border-bottom:0; background-color:#FFE4B5; border-radius:12px 12px 0 0; }
-        .bookshelf-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; background-color:#FFE4B5; padding:12px; }
+        .bookshelf-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; background-color:#FFE4B5; padding:12px; }
         .bookshelf-legs { display:flex; justify-content:space-between; padding:0 40px; }
         .leg { width:40px; height:40px; background-color:#FFE4B5; border-radius:0 0 20px 20px; }
 
         /* 갤러리 카드 - 고정 가로 배치 */
         .report-card-mini {
             background-color:white; border:3px solid #0F172A; border-radius:16px;
-            padding:12px; display:flex; flex-direction:row; gap:12px;
+            padding:10px; display:flex; flex-direction:row; gap:10px;
             box-shadow:4px 4px 0px #0F172A; cursor:pointer; transition:transform 0.2s;
         }
         .report-card-mini:hover { transform:scale(1.02) translateY(-2px); border-color:#FACC15; }
@@ -469,7 +469,8 @@
                     <div>
                         <span class="inline-block bg-pink-100 px-2 py-1 rounded border-2 border-pink-200 text-sm font-bold text-slate-700 w-fit mb-2">독서 메모</span>
                         <div class="bg-pink-50 p-4 rounded-xl border-2 border-pink-100">
-                            <p class="text-base font-medium text-slate-800 whitespace-pre-wrap leading-relaxed" id="res-memo"></p>
+                            <p 
+class="text-base font-medium text-slate-800 whitespace-pre-wrap leading-relaxed" id="res-memo"></p>
                         </div>
                     </div>
                     <div>
@@ -949,6 +950,7 @@ function tryResume() {
     finalReadingTime     = snap.finalTime    || finalReadingTime;
     maxStepReached       = snap.maxStep      || maxStepReached;
     selectedPostQuestion = snap.postQuestion || selectedPostQuestion;
+    if (snap.view === 'view-result') showFinalActions();
     showView(snap.view);
     return true;
 }
@@ -1445,7 +1447,18 @@ function finishJourney() {
     if (maxStepReached < 3) maxStepReached = 3;
     saveRecord();
     sessionCompleted = true;
+    showFinalActions();   // 두 번째 기록부터 버튼이 사라지던 문제 해결
     showView('view-result');
+}
+
+// 결과 화면 하단 버튼(저장하기 / 오늘 독서 완료)을 다시 보이게 합니다.
+//   resetSessionInputs()에서 숨긴 뒤 되돌리는 곳이 없어서,
+//   두 번째 독서부터 버튼이 보이지 않았습니다.
+function showFinalActions() {
+    const fa = document.getElementById('final-actions');
+    if (!fa) return;
+    fa.classList.remove('hidden');
+    fa.classList.add('flex');
 }
 
 // ════════════════════════════════════════════════════
@@ -1600,17 +1613,21 @@ function renderCards(userLogs) {
         div.className = 'report-card-mini';
         div.onclick   = () => showLogDetail(log);
         const bg = emojiColors[log.emoji] || 'from-slate-100 to-slate-200';
-        div.innerHTML = `
+        // 이모지가 없으면 왼쪽 상자를 아예 만들지 않습니다. (빈 회색 네모 제거)
+        const hasEmoji = !!(log.emoji && log.emoji !== '⏳');
+        const emojiBox = hasEmoji ? `
             <div class="w-20 h-20 rounded-xl bg-gradient-to-br ${bg} flex items-center justify-center border-2 border-slate-200 shrink-0">
-                <span class="text-4xl">${log.emoji === '⏳' ? '' : (log.emoji || '')}</span>
-            </div>
-            <div class="flex-1 flex flex-col gap-1.5 text-left min-w-0 justify-center">
-                <span class="text-base text-slate-400 font-bold">${log.date}</span>
-                <span class="text-xl font-black text-slate-900 leading-tight">${log.book}</span>
+                <span class="text-4xl">${log.emoji}</span>
+            </div>` : '';
+        div.innerHTML = `
+            ${emojiBox}
+            <div class="flex-1 flex flex-col gap-1 text-left min-w-0 justify-center">
+                <span class="text-sm text-slate-400 font-bold">${log.date}</span>
+                <span class="text-lg font-black text-slate-900 leading-tight break-words">${log.book}</span>
                 <div class="flex flex-wrap gap-1">
-                    <span class="text-sm bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded">목표 ${log.targetTime||'?'}분 → 실제 ${log.time||0}분</span>
-                    <span class="text-sm bg-orange-50 text-orange-600 font-bold px-2 py-0.5 rounded">일시정지 ${log.pauseCount||0}회</span>
-                    ${log.extraReading === 'Y' ? '<span class="text-sm bg-green-50 text-green-600 font-bold px-2 py-0.5 rounded">추가 독서 ✓</span>' : ''}
+                    <span class="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded">목표 ${log.targetTime||'?'}분 → 실제 ${log.time||0}분</span>
+                    <span class="text-xs bg-orange-50 text-orange-600 font-bold px-2 py-0.5 rounded">일시정지 ${log.pauseCount||0}회</span>
+                    ${log.extraReading === 'Y' ? '<span class="text-xs bg-green-50 text-green-600 font-bold px-2 py-0.5 rounded">추가 독서 ✓</span>' : ''}
                 </div>
             </div>`;
         grid.appendChild(div);
@@ -1692,7 +1709,15 @@ function goHome() {
 }
 
 function saveImage() {
-    const el    = document.getElementById('view-result');
+    const el = document.getElementById('view-result');
+    if (!el) return;
+    if (typeof html2canvas !== 'function') {
+        showModal('저장할 수 없어요', '이미지 저장 기능을 불러오지 못했어요. 새로고침 후 다시 해주세요.', false);
+        return;
+    }
+
+    _showSaveVeil('📷 그림을 만들고 있어요…');
+
     const clone = el.cloneNode(true);
     Object.assign(clone.style, {
         position: 'fixed', top: '0', left: '0',
@@ -1702,15 +1727,95 @@ function saveImage() {
     });
     const actions = clone.querySelector('#final-actions');
     if (actions) actions.remove();
+    clone.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
     document.body.appendChild(clone);
-    html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: '#FEFCE8' }).then(canvas => {
-        const d    = new Date();
-        const link = document.createElement('a');
-        link.download = `독서탐험_${currentUser}_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.png`;
-        link.href     = canvas.toDataURL();
-        link.click();
-        document.body.removeChild(clone);
-    });
+
+    const cleanup = () => {
+        if (clone.parentNode) clone.parentNode.removeChild(clone);
+        _hideSaveVeil();
+    };
+
+    const run = () => {
+        html2canvas(clone, {
+            scale: 2, useCORS: true, logging: false,
+            backgroundColor: '#FEFCE8', imageTimeout: 0
+        }).then(canvas => {
+            cleanup();
+            _showImagePopup(canvas.toDataURL('image/png'));
+        }).catch(() => {
+            cleanup();
+            showModal('저장하지 못했어요', '그림을 만드는 중 문제가 생겼어요. 잠시 후 다시 해주세요.', false);
+        });
+    };
+
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(run).catch(run);
+    } else {
+        setTimeout(run, 300);
+    }
+}
+
+// 만드는 동안 화면을 덮어 두는 가림막
+function _showSaveVeil(msg) {
+    let v = document.getElementById('save-veil');
+    if (!v) {
+        v = document.createElement('div');
+        v.id = 'save-veil';
+        v.setAttribute('data-html2canvas-ignore', 'true');
+        v.style.cssText =
+            'position:fixed;top:0;left:0;right:0;bottom:0;background:#FEF9C3;' +
+            'display:flex;align-items:center;justify-content:center;z-index:10500;' +
+            'font-size:28px;font-weight:900;color:#1e293b;';
+        document.body.appendChild(v);
+    }
+    v.textContent = msg;
+}
+
+function _hideSaveVeil() {
+    const v = document.getElementById('save-veil');
+    if (v) v.remove();
+}
+
+// 완성된 그림을 화면에 보여 줍니다.
+//   내려받기가 막히는 환경(아이패드·미리보기 창)에서도
+//   그림을 꾹 눌러 저장할 수 있게 항상 띄웁니다.
+function _showImagePopup(dataUrl) {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const d = new Date();
+    const stamp = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    const filename = `독서탐험_${(currentUser||'학생').replace(/\s/g,'')}_${stamp}.png`;
+
+    const old = document.getElementById('image-popup');
+    if (old) old.remove();
+
+    const box = document.createElement('div');
+    box.id = 'image-popup';
+    box.setAttribute('data-html2canvas-ignore', 'true');
+    box.style.cssText =
+        'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.72);' +
+        'display:flex;align-items:center;justify-content:center;z-index:10600;padding:20px;';
+    box.innerHTML = `
+        <div style="background:#fff;border:4px solid #0f172a;border-radius:18px;
+                    max-width:520px;width:100%;max-height:92%;overflow:auto;
+                    padding:18px;text-align:center;">
+            <div style="font-size:22px;font-weight:900;color:#0f172a;margin-bottom:6px;">📷 독서기록이 완성됐어요</div>
+            <div style="font-size:14px;font-weight:700;color:#475569;margin-bottom:12px;line-height:1.6;">
+                ${isIOS
+                  ? '그림을 손가락으로 꾹 눌러 사진에 저장하세요.'
+                  : '아래 버튼을 누르면 내 컴퓨터에 저장돼요.<br>버튼이 안 되면 그림을 마우스 오른쪽 클릭해서 저장하세요.'}
+            </div>
+            <img src="${dataUrl}" alt="독서기록"
+                 style="width:100%;border:2px solid #cbd5e1;border-radius:12px;margin-bottom:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <a href="${dataUrl}" download="${filename}"
+                   style="display:block;padding:12px;border-radius:12px;background:#1e293b;color:#fff;
+                          font-size:17px;font-weight:800;text-decoration:none;">⬇️ 내려받기</a>
+                <button type="button" onclick="document.getElementById('image-popup').remove()"
+                        style="padding:12px;border-radius:12px;background:#e2e8f0;color:#0f172a;border:none;
+                               font-size:17px;font-weight:800;cursor:pointer;">닫기</button>
+            </div>
+        </div>`;
+    document.body.appendChild(box);
 }
 </script>
 
